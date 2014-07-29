@@ -38,6 +38,15 @@ module.exports = function(grunt) {
         }
       }
     },
+    run: {
+      options: {
+
+      },
+      tenlines: {
+        cmd: 'node app.js',
+        // args: { }
+      }
+    },
     watch: {
       files: ['<%= jshint.files %>'],
       tasks: ['jshint', 'qunit']
@@ -45,6 +54,7 @@ module.exports = function(grunt) {
   });
 
   // Load the plugin that provides the "uglify" task.
+  grunt.loadNpmTasks('grunt-run');
   grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-qunit');
