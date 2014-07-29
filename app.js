@@ -1,6 +1,7 @@
 var express = require('express');
 var request = require('request');
-var _		= require('rambda');
+var _		= require('lodash');
+var ramda	= require('ramda');
 var app 	= express();
 
 app.get('/', function(req, res) {
