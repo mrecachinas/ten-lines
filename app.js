@@ -7,6 +7,7 @@ app.get('/', function(req, res) {
 	res.send('Hello World');
 });
 
-app.listen('8081');
-console.log('Magic happens on port 8081');
+var server = app.listen(3000, function () {
+	console.log('Listening on port %d', server.address().port);
+});
 exports = module.exports = app;
