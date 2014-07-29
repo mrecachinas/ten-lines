@@ -1,0 +1,37 @@
+{
+  "name": "TenLines",
+  "version": "0.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrecachinas/ten-lines"
+  },
+  "keywords": [
+    "ten",
+    "lines"
+  ],
+  "author": "mike-recachinas",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mrecachinas/ten-lines/issues"
+  },
+  "homepage": "https://github.com/ten-lines/YoWorldCup",
+  "devDependencies": {
+    "gulp-rename": "~1.2.0",
+    "gulp-clean": "~0.3.1",
+    "gulp-concat": "~2.3.4",
+    "gulp-cache": "~0.2.0",
+    "gulp-livereload": "~2.1.0",
+    "gulp-autoprefixer": "0.0.8",
+    "gulp-uglify": "~0.3.1",
+    "gulp-notify": "~1.4.0",
+    "gulp-jshint": "~1.8.0",
+    "gulp-minify-css": "~0.3.7",
+    "gulp-ruby-sass": "~0.7.1",
+    "gulp-imagemin": "~0.6.2"
+  }
+}
