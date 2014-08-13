@@ -18,8 +18,19 @@ var parse = function(filename) {
 
 
 var rawBlameLineToObject = function(str) {
+    //var test = '30acb8d7 (Michael Recachinas 2014-07-28 21:14:25 -0400  5) var app \t= express();'
 
+    var insideParens = /\(([^)]+)\)/.exec(test)[1].split(' ');
 
+    var obj = { };
+    obj.commit_hash = /^[A-z0-9]+/.exec(test)[0];
+    obj.username = insideParens[0] + ' ' + insideParens[1];
+    obj.date = insideParens[2];
+    obj.time = insideParens[3];
+    obj.line_no = insideParens[insideParens.length - 1];
+    obj.code_value = /\)(.|\n)*/.exec(test)[0].split(' ').slice(1).join(' ');
+
+    return obj;
 };
 
 
