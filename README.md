@@ -4,6 +4,14 @@ ten-lines
 yolo swag swag
 
 
+## Up and running
+
+    npm install -g grunt-cli
+    npm install
+    grunt
+    node server
+
+
 ## Roadmap
 
 - **Server**
