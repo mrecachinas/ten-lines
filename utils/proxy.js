@@ -5,7 +5,7 @@ var request = require('request');
 var express = require('express');
 var app = express();
 
-var devUrl = 'http://192.168.1.70:20144/';
+var devUrl = 'localhost:3333';
 
 app.use(express.logger('dev'));
 app.use(express.favicon());
