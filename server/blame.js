@@ -70,6 +70,7 @@ var parse = function(filename) {
     return deferred.promise;
 }
 
+
 // Takes in a string from the gitblame file and converts it into an object
 var rawBlameLineToObject = function(str) {
     var insideParens = /\(([^)]+)\)/.exec(str)[1].split(' ');
@@ -84,6 +85,7 @@ var rawBlameLineToObject = function(str) {
 
     return obj;
 };
+
 
 module.exports = function(path) {
     var deferred = Q.defer();
