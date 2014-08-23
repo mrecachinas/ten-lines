@@ -1,11 +1,38 @@
-.login-screen {
+.container {	
+	h1 {
+		text-align:center;
+		font-size:48px;
+	}
+
+	h2 {
+		text-align:center;
+	}
+}
+
+.input {
+	margin-top:20px;
 	text-align:center;
 
 	input {
 		display:inline-block;
+		margin:0;
 		border-top:0;
 		border-right:0;
-		border-bottom:1px solid black;
+		border-bottom:1px solid #aaa;
 		border-left:0;
+		text-align:center;
+		transition:border-color 0.3s ease;
+
+		&:hover {
+			border-color:#444;
+		}
+
+		&:focus {
+			border-color:black;
+		}
 	}
+}
+
+.arc path {
+  stroke: #fff;
 }

@@ -10,11 +10,23 @@
     <link rel="stylesheet" href="/public/styles/styles.css">
 
     <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.js"></script>
 </head>
 <body>
 
-    <div id="app-container" class="container"></div>
+    <div id="app-container" class="container">
+    	<h1>10-lines</h1>
+    	<h2>"A programmer only writes ten lines of code per day"</h2>
+    	<div class="input">
+	    	<!-- <span>http://github.com/</span> -->
+	    	<input id="username" type="text" placeholder="GitHub Username">/
+	    	<input id="repo" type="text" placeholder="Repo Name" >
+	    	<span class="response"></span>
+    	</div>
+    	<div class="graph-container">
 
+    	</div>
+    </div>
     <script src="/public/scripts/scripts.js"></script>
 </body>
 </html>

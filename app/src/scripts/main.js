@@ -10,10 +10,6 @@ var Fluxxor = require('fluxxor');
 var FluxMixin = Fluxxor.FluxMixin(React);
 var FluxChildMixin = Fluxxor.FluxChildMixin(React);
 var StoreWatchMixin = Fluxxor.StoreWatchMixin('LoginStore');
-var flux = require('./stores/store');
-
-// Views - These are our main screens of the app
-var Login = require('./screens/login');
 
 
 // A helper function to eliminate boilerplate render code
@@ -45,7 +41,7 @@ var App = React.createClass({
 
 
 React.renderComponent(
-  <App flux={flux} />,
+  <App /*flux={flux}*/ />,
   document.getElementById('app-container')
 );
 
