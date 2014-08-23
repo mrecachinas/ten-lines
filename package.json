@@ -1,6 +1,6 @@
 {
   "author": "mike-recachinas",
-  "name": "TenLines",
+  "name": "tenlines",
   "version": "0.0.1",
   "description": "",
   "main": "app.js",
@@ -41,6 +41,11 @@
     "react": "^0.11.1",
     "reactify": "~0.10.0",
     "request": "~2.22.0",
-    "superagent": "~0.17.0"
+    "superagent": "~0.17.0",
+    "gift": "~0.4.2",
+    "gitblame": "~0.1.1",
+    "glob": "~4.0.5",
+    "q": "~1.0.1",
+    "rimraf": "~2.2.8"
   }
 }

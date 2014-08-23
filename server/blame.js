@@ -1,13 +1,28 @@
 // =============================================================================
 // Libs
 // =============================================================================
-var gitblame = require('gitblame');
 require('ramda').installTo(global);
 var glob = require('glob');
 var Q = require('q');
 var fs = require('fs');
 var lodash = require('lodash');
+var exec = require('child_process').exec;
+var path = require('path');
 
+var gitblame = function(file, cb) {
+  var dirname = path.dirname(file);
+  var filename = path.basename(file);
+  var options = {cwd: dirname, maxBuffer: 1024* 1024 * 1024};
+  exec('git blame ' + filename, options, function (error, stdout, stderr) {
+      if (error !== null) {
+        console.log('exec error: ' + error);
+        return cb(new Error(error));
+      }
+      var lines = stdout.split("\n");
+      lines.unshift(""); // make the line numbers match
+      cb(null, lines);
+  });
+};
 
 // =============================================================================
 // Helpers
@@ -70,39 +85,22 @@ var rawBlameLineToObject = function(str) {
     return obj;
 };
 
-// =============================================================================
-// Execution
-// =============================================================================
+module.exports = function(path) {
+    var deferred = Q.defer();
 
-// Make a list of regular expressions to ignore while grepping for files
-// This will be based on our gitignore
-var ignore = compose(
-    map(regexpTest),
-    concat(['.*\.min', '\/build\/']),
-    reject(regexpTest('#')),
-    removeBlanks,
-    split('\n')
-)(readFile('.gitignore'));
+    if (!path) {
+        deferred.resolve([]);
+    };
 
-// Ugh, not pure, fix this
-// Run the above ignore list of regular expressions over the filename we have
-var validFile = function(filename) {
-    return reduce(function(memo, r) {
-        return memo || !!r(filename);
-    }, false, ignore);
-};
+    glob(path + '/**/*.js', function(err, files) {
+        if (err) {return deferred.resolve([]);}
 
+        var blamedFiles = map(parse, files);
 
-// Search for all the js files
-glob('**/*.js', function(err, files) {
-    if (err) {return;}
-
-    var filenames = reject(validFile, files);
-    var blamedFiles = map(parse, filenames);
-
-    Q.all(blamedFiles).then(function(files) {
-        // At this point we have all the files
-        console.log(files);
+        Q.all(blamedFiles).then(function(files) {
+            deferred.resolve(files);
+        });
     });
-});
 
+    return deferred.promise
+}
