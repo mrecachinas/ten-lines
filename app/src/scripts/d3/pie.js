@@ -1,45 +1,47 @@
-var d3 = require('d3');
+var Pie = function(data) {
+    this.plot(data);
+};
 
-var width = 960,
-    height = 500,
-    radius = Math.min(width, height) / 2;
+Pie.prototype.crunch = function (data) {
+    var udata = { total: 0 };
+    for (k in data.byUser) {
+        udata[k] = 0;
+        for (j in data.byUser[k]) {
+            udata[k] += data.byUser[k][j].length;
+        }
+        udata.total += udata[k];
+    }
+    return udata;
+};
 
-var color = d3.scale.ordinal()
-    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+Pie.prototype.plot = function (data) {
+    var udata = this.crunch(data);
+    nv.addGraph(function() {
+        var width = 500,
+            height = 500;
 
-var arc = d3.svg.arc()
-    .outerRadius(radius - 10)
-    .innerRadius(0);
+        var chart = nv.models.pieChart()
+            .x(function(d) { return d.key })
+            //.y(function(d) { return d.value })
+            //.labelThreshold(.08)
+            //.showLabels(false)
+            .color(d3.scale.category10().range())
+            .width(width)
+            .height(height)
+            .donut(true);
 
-var pie = d3.layout.pie()
-    .sort(null)
-    .value(function(d) { return d.population; });
+          chart.pie.donutLabelsOutside(true).donut(true);
 
-var svg = d3.select(".graph-container").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-  .append("g")
-    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+          d3.select("#pie")
+              //.datum(historicalBarChart)
+              .datum(udata)
+              .transition().duration(1200)
+              .attr('width', width)
+              .attr('height', height)
+              .call(chart);
 
-d3.csv("data.csv", function(error, data) {
+        return chart;
+    });
+};
 
-  data.forEach(function(d) {
-    d.population = +d.population;
-  });
-
-  var g = svg.selectAll(".arc")
-      .data(pie(data))
-    .enter().append("g")
-      .attr("class", "arc");
-
-  g.append("path")
-      .attr("d", arc)
-      .style("fill", function(d) { return color(d.data.age); });
-
-  g.append("text")
-      .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
-      .attr("dy", ".35em")
-      .style("text-anchor", "middle")
-      .text(function(d) { return d.data.age; });
-
-});
+module.exports = Pie;

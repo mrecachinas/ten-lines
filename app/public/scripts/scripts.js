@@ -1,4 +1,136 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var Line = function(data) {
+    this.plot(data);
+};
+
+Line.prototype.crunch = function (data) {
+
+};
+
+Line.prototype.plot = function (data) {
+    data = this.crunch(data);
+    nv.addGraph(function() {
+      var chart = nv.models.lineChart();
+      var fitScreen = false;
+      var width = 600;
+      var height = 300;
+      var zoom = 1;
+
+      chart.useInteractiveGuideline(true);
+      chart.xAxis
+          .tickFormat(d3.format(',r'));
+
+      chart.yAxis
+          .axisLabel('Voltage (v)')
+          .tickFormat(d3.format(',.2f'));
+
+      d3.select('#chart1 svg')
+          .attr('perserveAspectRatio', 'xMinYMid')
+          .attr('width', width)
+          .attr('height', height)
+          .datum(sinAndCos());
+
+      setChartViewBox();
+      resizeChart();
+
+      // These resizes both do the same thing, and require recalculating the chart
+      //nv.utils.windowResize(chart.update);
+      //nv.utils.windowResize(function() { d3.select('#chart1 svg').call(chart) });
+      nv.utils.windowResize(resizeChart);
+
+      d3.select('#zoomIn').on('click', zoomIn);
+      d3.select('#zoomOut').on('click', zoomOut);
+
+
+      function setChartViewBox() {
+        var w = width * zoom,
+            h = height * zoom;
+
+        chart
+            .width(w)
+            .height(h);
+
+        d3.select('#line')
+          .attr('viewBox', '0 0 ' + w + ' ' + h)
+          .transition().duration(500)
+          .call(chart);
+      }
+      // This resize simply sets the SVG's dimensions, without a need to recall the chart code
+      // Resizing because of the viewbox and perserveAspectRatio settings
+      // This scales the interior of the chart unlike the above
+      function resizeChart() {
+        var container = d3.select('#line');
+        var svg = container.select('svg');
+
+        if (fitScreen) {
+          // resize based on container's width AND HEIGHT
+          var windowSize = nv.utils.windowSize();
+          svg.attr("width", windowSize.width);
+          svg.attr("height", windowSize.height);
+        } else {
+          // resize based on container's width
+          var aspect = chart.width() / chart.height();
+          var targetWidth = parseInt(container.style('width'));
+          svg.attr("width", targetWidth);
+          svg.attr("height", Math.round(targetWidth / aspect));
+        }
+      };
+
+
+      return chart;
+    });
+};
+
+module.exports = Line;
+},{}],2:[function(require,module,exports){
+var Pie = function(data) {
+    this.plot(data);
+};
+
+Pie.prototype.crunch = function (data) {
+    var udata = { total: 0 };
+    for (k in data.byUser) {
+        udata[k] = 0;
+        for (j in data.byUser[k]) {
+            udata[k] += data.byUser[k][j].length;
+        }
+        udata.total += udata[k];
+    }
+    return udata;
+};
+
+Pie.prototype.plot = function (data) {
+    var udata = this.crunch(data);
+    nv.addGraph(function() {
+        var width = 500,
+            height = 500;
+
+        var chart = nv.models.pieChart()
+            .x(function(d) { return d.key })
+            //.y(function(d) { return d.value })
+            //.labelThreshold(.08)
+            //.showLabels(false)
+            .color(d3.scale.category10().range())
+            .width(width)
+            .height(height)
+            .donut(true);
+
+          chart.pie.donutLabelsOutside(true).donut(true);
+
+          d3.select("#pie")
+              //.datum(historicalBarChart)
+              .datum(udata)
+              .transition().duration(1200)
+              .attr('width', width)
+              .attr('height', height)
+              .call(chart);
+
+        return chart;
+    });
+};
+
+module.exports = Pie;
+},{}],3:[function(require,module,exports){
 /** @jsx React.DOM */
 
 // Install Ramda to the global namespace first so all scripts can use it
@@ -14,6 +146,8 @@ var tmpls = {
 
 
 var Repo = require('./repo');
+var Pie = require('./d3/pie');
+var Line = require('./d3/line');
 window.repo;
 
 
@@ -30,7 +164,7 @@ $(document).ready(function () {
 
 			if (username !== "" && repoName !== "") {
 
-                $(".graph-container").html(tmpls.loading());
+                $(".loading").html(tmpls.loading());
 
                 superagent
                     .get('/api/repo/' + username + '/' + repoName)
@@ -38,8 +172,9 @@ $(document).ready(function () {
                     .end(function(res) {
                         if (!res.ok) { return; }
                         repo = new Repo(res.body);
-
-                        $(".graph-container").html('Done');
+                        $(".loading").html('Done');
+                        pie = new Pie(repo);
+                        // line = new Line(repo);
                     }.bind(this));
 
 			} else {
@@ -50,7 +185,7 @@ $(document).ready(function () {
 });
 
 
-},{"../templates/loading.handlebars":3,"./repo":2,"jquery":11,"lodash":12,"ramda":13,"superagent":14}],2:[function(require,module,exports){
+},{"../templates/loading.handlebars":5,"./d3/line":1,"./d3/pie":2,"./repo":4,"jquery":13,"lodash":14,"ramda":15,"superagent":16}],4:[function(require,module,exports){
 
 
 var Repo = function(data) {
@@ -85,7 +220,7 @@ Repo.prototype.setData = function(data) {
 
 module.exports = Repo;
 
-},{}],3:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -94,7 +229,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<i class=\"ion-looping\"></i>\n";
   });
-},{"handlebars/runtime":10}],4:[function(require,module,exports){
+},{"handlebars/runtime":12}],6:[function(require,module,exports){
 "use strict";
 /*globals Handlebars: true */
 var base = require("./handlebars/base");
@@ -127,7 +262,7 @@ var Handlebars = create();
 Handlebars.create = create;
 
 exports["default"] = Handlebars;
-},{"./handlebars/base":5,"./handlebars/exception":6,"./handlebars/runtime":7,"./handlebars/safe-string":8,"./handlebars/utils":9}],5:[function(require,module,exports){
+},{"./handlebars/base":7,"./handlebars/exception":8,"./handlebars/runtime":9,"./handlebars/safe-string":10,"./handlebars/utils":11}],7:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -308,7 +443,7 @@ exports.log = log;var createFrame = function(object) {
   return obj;
 };
 exports.createFrame = createFrame;
-},{"./exception":6,"./utils":9}],6:[function(require,module,exports){
+},{"./exception":8,"./utils":11}],8:[function(require,module,exports){
 "use strict";
 
 var errorProps = ['description', 'fileName', 'lineNumber', 'message', 'name', 'number', 'stack'];
@@ -337,7 +472,7 @@ function Exception(message, node) {
 Exception.prototype = new Error();
 
 exports["default"] = Exception;
-},{}],7:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -475,7 +610,7 @@ exports.program = program;function invokePartial(partial, name, context, helpers
 exports.invokePartial = invokePartial;function noop() { return ""; }
 
 exports.noop = noop;
-},{"./base":5,"./exception":6,"./utils":9}],8:[function(require,module,exports){
+},{"./base":7,"./exception":8,"./utils":11}],10:[function(require,module,exports){
 "use strict";
 // Build out our basic SafeString type
 function SafeString(string) {
@@ -487,7 +622,7 @@ SafeString.prototype.toString = function() {
 };
 
 exports["default"] = SafeString;
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 /*jshint -W004 */
 var SafeString = require("./safe-string")["default"];
@@ -564,12 +699,12 @@ exports.escapeExpression = escapeExpression;function isEmpty(value) {
 }
 
 exports.isEmpty = isEmpty;
-},{"./safe-string":8}],10:[function(require,module,exports){
+},{"./safe-string":10}],12:[function(require,module,exports){
 // Create a simple path alias to allow browserify to resolve
 // the runtime on a supported path.
 module.exports = require('./dist/cjs/handlebars.runtime');
 
-},{"./dist/cjs/handlebars.runtime":4}],11:[function(require,module,exports){
+},{"./dist/cjs/handlebars.runtime":6}],13:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.1
  * http://jquery.com/
@@ -9761,7 +9896,7 @@ return jQuery;
 
 }));
 
-},{}],12:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -16550,7 +16685,7 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],13:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 //     ramda.js 0.3.0
 //     https://github.com/CrossEye/ramda
 //     (c) 2013-2014 Scott Sauyet and Michael Hurley
@@ -20532,7 +20667,7 @@ return jQuery;
     }());
 }));
 
-},{}],14:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -21538,7 +21673,7 @@ request.put = function(url, data, fn){
 
 module.exports = request;
 
-},{"emitter":15,"reduce":16}],15:[function(require,module,exports){
+},{"emitter":17,"reduce":18}],17:[function(require,module,exports){
 
 /**
  * Expose `Emitter`.
@@ -21696,7 +21831,7 @@ Emitter.prototype.hasListeners = function(event){
   return !! this.listeners(event).length;
 };
 
-},{}],16:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 
 /**
  * Reduce `arr` with `fn`.
@@ -21721,4 +21856,4 @@ module.exports = function(arr, fn, initial){
   
   return curr;
 };
-},{}]},{},[1])
+},{}]},{},[3])

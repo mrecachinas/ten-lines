@@ -1,61 +1,83 @@
-var d3 = require('d3');
+var Line = function(data) {
+    this.plot(data);
+};
 
-var margin = {top: 20, right: 20, bottom: 30, left: 50},
-    width = 960 - margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom;
+Line.prototype.crunch = function (data) {
 
-var parseDate = d3.time.format("%d-%b-%y").parse;
+};
 
-var x = d3.time.scale()
-    .range([0, width]);
+Line.prototype.plot = function (data) {
+    data = this.crunch(data);
+    nv.addGraph(function() {
+      var chart = nv.models.lineChart();
+      var fitScreen = false;
+      var width = 600;
+      var height = 300;
+      var zoom = 1;
 
-var y = d3.scale.linear()
-    .range([height, 0]);
+      chart.useInteractiveGuideline(true);
+      chart.xAxis
+          .tickFormat(d3.format(',r'));
 
-var xAxis = d3.svg.axis()
-    .scale(x)
-    .orient("bottom");
+      chart.yAxis
+          .axisLabel('Voltage (v)')
+          .tickFormat(d3.format(',.2f'));
 
-var yAxis = d3.svg.axis()
-    .scale(y)
-    .orient("left");
+      d3.select('#chart1 svg')
+          .attr('perserveAspectRatio', 'xMinYMid')
+          .attr('width', width)
+          .attr('height', height)
+          .datum(sinAndCos());
 
-var line = d3.svg.line()
-    .x(function(d) { return x(d.date); })
-    .y(function(d) { return y(d.close); });
+      setChartViewBox();
+      resizeChart();
 
-var svg1 = d3.select(".graph-container").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      // These resizes both do the same thing, and require recalculating the chart
+      //nv.utils.windowResize(chart.update);
+      //nv.utils.windowResize(function() { d3.select('#chart1 svg').call(chart) });
+      nv.utils.windowResize(resizeChart);
 
-d3.tsv("data.tsv", function(error, data) {
-  data.forEach(function(d) {
-    d.date = parseDate(d.date);
-    d.close = +d.close;
-  });
+      d3.select('#zoomIn').on('click', zoomIn);
+      d3.select('#zoomOut').on('click', zoomOut);
 
-  x.domain(d3.extent(data, function(d) { return d.date; }));
-  y.domain(d3.extent(data, function(d) { return d.close; }));
 
-  svg1.append("g")
-      .attr("class", "x axis")
-      .attr("transform", "translate(0," + height + ")")
-      .call(xAxis);
+      function setChartViewBox() {
+        var w = width * zoom,
+            h = height * zoom;
 
-  svg1.append("g")
-      .attr("class", "y axis")
-      .call(yAxis)
-    .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 6)
-      .attr("dy", ".71em")
-      .style("text-anchor", "end")
-      .text("Price ($)");
+        chart
+            .width(w)
+            .height(h);
 
-  svg1.append("path")
-      .datum(data)
-      .attr("class", "line")
-      .attr("d", line);
-});
+        d3.select('#line')
+          .attr('viewBox', '0 0 ' + w + ' ' + h)
+          .transition().duration(500)
+          .call(chart);
+      }
+      // This resize simply sets the SVG's dimensions, without a need to recall the chart code
+      // Resizing because of the viewbox and perserveAspectRatio settings
+      // This scales the interior of the chart unlike the above
+      function resizeChart() {
+        var container = d3.select('#line');
+        var svg = container.select('svg');
+
+        if (fitScreen) {
+          // resize based on container's width AND HEIGHT
+          var windowSize = nv.utils.windowSize();
+          svg.attr("width", windowSize.width);
+          svg.attr("height", windowSize.height);
+        } else {
+          // resize based on container's width
+          var aspect = chart.width() / chart.height();
+          var targetWidth = parseInt(container.style('width'));
+          svg.attr("width", targetWidth);
+          svg.attr("height", Math.round(targetWidth / aspect));
+        }
+      };
+
+
+      return chart;
+    });
+};
+
+module.exports = Line;

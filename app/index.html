@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="/public/styles/styles.css">
 
     <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.11/d3.js"></script>
+	<script src="/src/scripts/d3/nv.d3.min.js"></script>
 </head>
 <body>
 
@@ -21,11 +23,13 @@
 	    	<input id="username" type="text" placeholder="GitHub Username">/
 	    	<input id="repo" type="text" placeholder="Repo Name" >
 	    	<input id="filetypes" type="text" placeholder="Filetypes space seperated" >
-	    	<span class="response"></span>
+	    	<div class="response"></div>
     	</div>
 
     	<div class="graph-container">
-
+    		<div class="loading"></div>
+	    	<svg id="pie"></svg>
+	    	<svg id="line"></svg>
     	</div>
     </div>
     <script src="/public/scripts/scripts.js"></script>
