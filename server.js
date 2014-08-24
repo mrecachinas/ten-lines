@@ -28,14 +28,13 @@ app.get('/repo/:username/:repo', function(req, res) {
         filetypes: (req.query.filetypes || '').split(',')
     };
 
-    var dbId = id + options.filetypes.join('.');
-
-    repos.findOne({ repo: dbId }, function (err, doc) {
+    repos.findOne({ repo: id }, function (err, doc) {
         if (err) {
             return res.send('something went wrong with the db sorry dude');
         }
 
         if (!doc) {
+            console.log(url);
             git.clone(url, dir, function(err, repo) {
                 if (err) {
                     return res.send('error finding repo');
@@ -43,7 +42,7 @@ app.get('/repo/:username/:repo', function(req, res) {
 
                 blame(dir, options).then(function(files) {
                     repos.insert({
-                        repo: dbId,
+                        repo: id,
                         files: files,
                         date: Date.now()
                     });

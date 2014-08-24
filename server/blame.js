@@ -8,6 +8,7 @@ var fs = require('fs');
 var lodash = require('lodash');
 var exec = require('child_process').exec;
 var path = require('path');
+var _ = require('lodash');
 
 // INLINED THIRD PARTY
 var gitblame = function(file, cb) {
@@ -91,7 +92,10 @@ var rawBlameLineToObject = function(str) {
 module.exports = function(path, options) {
     var deferred = Q.defer();
 
-    var filetypes = options.filetypes || ['js'];
+    var filetypes = _.compact(options.filetypes)
+    if (!filetypes.length) {
+        filetypes.push('js');
+    }
 
     if (!path) {
         deferred.resolve([]);
