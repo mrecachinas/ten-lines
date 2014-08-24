@@ -10,16 +10,10 @@ var blame   = require('./server/blame');
 
 var Datastore = require('nedb')
 var repos = new Datastore({ filename: './dbs/repos', autoload: true });
-
-
 repos.remove({}, function (err, numRemoved) {
     console.log('Wippped db');
 });
 
-
-app.get('/', function(req, res) {
-    res.send('Hello World');
-});
 
 
 app.get('/repo/:username/:repo', function(req, res) {
@@ -34,7 +28,9 @@ app.get('/repo/:username/:repo', function(req, res) {
         filetypes: (req.query.filetypes || '').split(',')
     };
 
-    repos.findOne({ repo: id }, function (err, doc) {
+    var dbId = id + options.filetypes.join('.');
+
+    repos.findOne({ repo: dbId }, function (err, doc) {
         if (err) {
             return res.send('something went wrong with the db sorry dude');
         }
@@ -47,7 +43,7 @@ app.get('/repo/:username/:repo', function(req, res) {
 
                 blame(dir, options).then(function(files) {
                     repos.insert({
-                        repo: id,
+                        repo: dbId,
                         files: files,
                         date: Date.now()
                     });
