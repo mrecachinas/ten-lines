@@ -8,7 +8,10 @@ var $ = require('jquery');
 var _ = require('lodash');
 var superagent = require('superagent');
 
-var hello = require('../templates/hello.handlebars');
+var tmpls = {
+    loading: require('../templates/loading.handlebars')
+};
+
 
 var Repo = require('./repo');
 window.repo;
@@ -22,11 +25,15 @@ $(document).ready(function () {
 			var repoName = $('#repo').val();
 			if (username !== "" && repoName !== "") {
 
+                $(".graph-container").html(tmpls.loading());
+
                 superagent
                     .get('/api/repo/' + username + '/' + repoName)
                     .end(function(res) {
                         if (!res.ok) { return; }
                         repo = new Repo(res.body);
+
+                        $(".graph-container").html('Done');
                     }.bind(this));
 
 			} else {
@@ -37,7 +44,7 @@ $(document).ready(function () {
 });
 
 
-},{"../templates/hello.handlebars":3,"./repo":2,"jquery":11,"lodash":12,"ramda":13,"superagent":14}],2:[function(require,module,exports){
+},{"../templates/loading.handlebars":3,"./repo":2,"jquery":11,"lodash":12,"ramda":13,"superagent":14}],2:[function(require,module,exports){
 
 
 var Repo = function(data) {
@@ -52,6 +59,8 @@ Repo.prototype.setData = function(data) {
 
     this.byDate = groupBy(prop('date'), this.flat);
     this.byUser = groupBy(prop('username'), this.flat);
+
+    return repo;
 };
 
 Repo.prototype.linesByUser = function(user) {
@@ -65,15 +74,10 @@ module.exports = Repo;
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
-  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression;
+  
 
 
-  buffer += "Hello, ";
-  if (helper = helpers.name) { stack1 = helper.call(depth0, {hash:{},data:data}); }
-  else { helper = (depth0 && depth0.name); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
-  buffer += escapeExpression(stack1)
-    + "!\n";
-  return buffer;
+  return "<i class=\"ion-looping\"></i>\n";
   });
 },{"handlebars/runtime":10}],4:[function(require,module,exports){
 "use strict";

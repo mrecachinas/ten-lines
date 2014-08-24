@@ -7,7 +7,10 @@ var $ = require('jquery');
 var _ = require('lodash');
 var superagent = require('superagent');
 
-var hello = require('../templates/hello.handlebars');
+var tmpls = {
+    loading: require('../templates/loading.handlebars')
+};
+
 
 var Repo = require('./repo');
 window.repo;
@@ -21,11 +24,15 @@ $(document).ready(function () {
 			var repoName = $('#repo').val();
 			if (username !== "" && repoName !== "") {
 
+                $(".graph-container").html(tmpls.loading());
+
                 superagent
                     .get('/api/repo/' + username + '/' + repoName)
                     .end(function(res) {
                         if (!res.ok) { return; }
                         repo = new Repo(res.body);
+
+                        $(".graph-container").html('Done');
                     }.bind(this));
 
 			} else {

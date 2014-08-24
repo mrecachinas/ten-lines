@@ -12,6 +12,8 @@ Repo.prototype.setData = function(data) {
 
     this.byDate = groupBy(prop('date'), this.flat);
     this.byUser = groupBy(prop('username'), this.flat);
+
+    return repo;
 };
 
 Repo.prototype.linesByUser = function(user) {
