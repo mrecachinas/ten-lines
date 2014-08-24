@@ -5,7 +5,7 @@ var request = require('request');
 var express = require('express');
 var app = express();
 
-var devUrl = 'localhost:3333';
+var devUrl = 'http://localhost:3333';
 
 app.use(express.logger('dev'));
 app.use(express.favicon());
@@ -17,13 +17,17 @@ module.exports = function (options) {
     options = options || {};
     var port = options.port || 4444;
     console.log(port);
+
     var staticRoot = options.staticRoot || path.join(__dirname, '..', 'app');
 
     app.use(express['static'](staticRoot));
 
     app.all('*/api/*', function(req, res) {
-        var url = devUrl + req.url.replace('/api/', '');
+        var url = devUrl + req.url.replace('api/', '');
+
         console.log('[' + req.method + '] ' + url);
+
+        console.log(url);
 
         req.pipe(request({
             method: req.method,

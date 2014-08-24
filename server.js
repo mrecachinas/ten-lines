@@ -17,12 +17,6 @@ app.get('/', function(req, res) {
 });
 
 
-app.get('/test', function(req, res) {
-
-    console.log(req.query);
-    res.send('ok');
-});
-
 app.get('/repo/:username/:repo', function(req, res) {
     var username = req.params.username;
     var repo = req.params.repo;
@@ -59,8 +53,6 @@ app.get('/repo/:username/:repo', function(req, res) {
             res.send(doc.files);
         }
     });
-
-
 });
 
 var server = app.listen(3333, function () {

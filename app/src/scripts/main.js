@@ -3,45 +3,35 @@
 // Install Ramda to the global namespace first so all scripts can use it
 require('ramda').installTo(window);
 
-var React = require('react');
+var $ = require('jquery');
+var _ = require('lodash');
+var superagent = require('superagent');
 
-// Fluxxor
-var Fluxxor = require('fluxxor');
-var FluxMixin = Fluxxor.FluxMixin(React);
-var FluxChildMixin = Fluxxor.FluxChildMixin(React);
-var StoreWatchMixin = Fluxxor.StoreWatchMixin('LoginStore');
+var hello = require('../templates/hello.handlebars');
 
-
-// A helper function to eliminate boilerplate render code
-var render = function(contents) {
-    return (
-        <div className="app-container">
-            {contents}
-        </div>
-    );
-};
+var Repo = require('./repo');
+window.repo;
 
 
-var App = React.createClass({
-    mixins: [FluxMixin, StoreWatchMixin],
 
-    getStateFromFlux: function() {
-        var flux = this.getFlux();
-        return {
-            loginStore: flux.store('LoginStore').getState()
-        };
-    },
+$(document).ready(function () {
+	$('input').keydown(function(e) {
+		if (e.keyCode === 13) {
+			var username = $('#username').val();
+			var repoName = $('#repo').val();
+			if (username !== "" && repoName !== "") {
 
-    render: function() {
-        return (!this.state.loginStore.isLoggedIn)
-                ? render(<Login />)
-                : render(<h1>You are now logged in!</h1>);
-    }
+                superagent
+                    .get('/api/repo/' + username + '/' + repoName)
+                    .end(function(res) {
+                        if (!res.ok) { return; }
+                        repo = new Repo(res.body);
+                    }.bind(this));
+
+			} else {
+				$('.response').text('One or more fields empty');
+			}
+		}
+	});
 });
-
-
-React.renderComponent(
-  <App /*flux={flux}*/ />,
-  document.getElementById('app-container')
-);
 

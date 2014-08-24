@@ -31,8 +31,8 @@ module.exports = function (grunt) {
         browserify: {
             options: {
                 debug: true,
-                transform: ['reactify'],
-                extensions: ['.jsx']
+                transform: ['browserify-handlebars'],
+                extensions: ['.handlebars']
             },
             dist: {
                 files: { 'app/public/scripts/scripts.js': 'app/src/scripts/main.js'}

@@ -1,3 +1,5 @@
+var d3 = require('d3');
+
 var width = 960,
     height = 500,
     radius = Math.min(width, height) / 2;
