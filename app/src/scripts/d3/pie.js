@@ -19,7 +19,6 @@ Pie.prototype.plot = function (data) {
     nv.addGraph(function() {
         var width = 500,
             height = 500;
-
         var chart = nv.models.pieChart()
             .x(function(d) { return d.key })
             //.y(function(d) { return d.value })
@@ -30,8 +29,7 @@ Pie.prototype.plot = function (data) {
             .height(height)
             .donut(true);
 
-          chart.pie.donutLabelsOutside(true).donut(true);
-
+          // chart.pie.donutLabelsOutside(true).donut(true);
           d3.select("#pie")
               //.datum(historicalBarChart)
               .datum(udata)
@@ -39,7 +37,6 @@ Pie.prototype.plot = function (data) {
               .attr('width', width)
               .attr('height', height)
               .call(chart);
-
         return chart;
     });
 };
