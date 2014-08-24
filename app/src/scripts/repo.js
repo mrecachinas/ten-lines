@@ -25,7 +25,7 @@ Repo.prototype.setData = function(data) {
         users
     )(this.flat);
 
-    return repo;
+    return this;
 };
 
 

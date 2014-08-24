@@ -9,6 +9,7 @@ var lodash = require('lodash');
 var exec = require('child_process').exec;
 var path = require('path');
 
+// INLINED THIRD PARTY
 var gitblame = function(file, cb) {
   var dirname = path.dirname(file);
   var filename = path.basename(file);
@@ -87,14 +88,21 @@ var rawBlameLineToObject = function(str) {
 };
 
 
-module.exports = function(path) {
+module.exports = function(path, options) {
     var deferred = Q.defer();
+
+    var filetypes = options.filetypes || ['js'];
 
     if (!path) {
         deferred.resolve([]);
     };
 
-    glob(path + '/**/*.js', function(err, files) {
+    var reg = path + '/**/*.['+filetypes.join(',')+']';
+    var reg = path + '/**/*.js';
+
+    console.log(reg);
+
+    glob(reg, function(err, files) {
         if (err) {return deferred.resolve([]);}
 
         var blamedFiles = map(parse, files);

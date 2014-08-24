@@ -21,12 +21,19 @@ $(document).ready(function () {
 		if (e.keyCode === 13) {
 			var username = $('#username').val();
 			var repoName = $('#repo').val();
+
+			var filetypes = ($('#filetypes').val() || '')
+                .replace(/,/g, '')
+                .replace(/\./g, '')
+                .split(' ');
+
 			if (username !== "" && repoName !== "") {
 
                 $(".graph-container").html(tmpls.loading());
 
                 superagent
                     .get('/api/repo/' + username + '/' + repoName)
+                    .query({filetypes: filetypes})
                     .end(function(res) {
                         if (!res.ok) { return; }
                         repo = new Repo(res.body);

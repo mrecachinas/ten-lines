@@ -12,6 +12,11 @@ var Datastore = require('nedb')
 var repos = new Datastore({ filename: './dbs/repos', autoload: true });
 
 
+repos.remove({}, function (err, numRemoved) {
+    console.log('Wippped db');
+});
+
+
 app.get('/', function(req, res) {
     res.send('Hello World');
 });
@@ -25,6 +30,9 @@ app.get('/repo/:username/:repo', function(req, res) {
     var url = 'https://test:test@github.com/'+id+'.git';
     var dir = '/var/tmp/'+repo+'-'+Math.floor(Math.random()*1000000);
 
+    var options = {
+        filetypes: (req.query.filetypes || '').split(',')
+    };
 
     repos.findOne({ repo: id }, function (err, doc) {
         if (err) {
@@ -37,7 +45,7 @@ app.get('/repo/:username/:repo', function(req, res) {
                     return res.send('error finding repo');
                 }
 
-                blame(dir).then(function(files) {
+                blame(dir, options).then(function(files) {
                     repos.insert({
                         repo: id,
                         files: files,
