@@ -97,12 +97,10 @@ module.exports = function(path, options) {
         deferred.resolve([]);
     };
 
-    var reg = path + '/**/*.['+filetypes.join(',')+']';
-    var reg = path + '/**/*.js';
+    var regs = path + '/**/*.+('+filetypes.join('|')+')';
 
-    console.log(reg);
-
-    glob(reg, function(err, files) {
+    glob(regs, function(err, files) {
+        console.log(files);
         if (err) {return deferred.resolve([]);}
 
         var blamedFiles = map(parse, files);
