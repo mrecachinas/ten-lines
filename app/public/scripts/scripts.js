@@ -49,6 +49,7 @@ Repo.prototype.setData = function(data) {
     this.data = data || [];
     this.files = pluck('filename', this.data);
     this.flat = compose(flatten, pluck('contents'))(this.data);
+
     this.byDate = groupBy(prop('date'), this.flat);
     this.byUser = groupBy(prop('username'), this.flat);
 };
