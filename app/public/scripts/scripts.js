@@ -62,6 +62,8 @@ Pie.prototype.plot = function (data) {
               .transition().duration(1200)
               .attr('width', width)
               .attr('height', height)
+              .attr('viewBox', '0, 0, ' + width + ', ' + height)
+              .attr('preserveAspectRatio', 'xMinYMin')
               .call(chart);
         return chart;
     });
@@ -116,6 +118,7 @@ $(document).ready(function () {
                         $(".loading").html('Done in ' + elapsed.getSeconds() + ' seconds');
                         pie = new Pie(repo);
                         // bar = new Bar(repo);
+                        $('html, body').animate({ scrollTop: $('.graph-container').offset().top }, 750);
                     }.bind(this));
 
 			} else {

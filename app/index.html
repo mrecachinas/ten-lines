@@ -10,8 +10,8 @@
     <link rel="stylesheet" href="/public/styles/styles.css">
     <link rel="stylesheet" href="/src/styles/thirdparty/nv.d3.min.css">
     <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
-    <script src="/src/scripts/d3/d3.js"></script>
-	<script src="/src/scripts/d3/nv.d3.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+	<script src="http://nvd3.org/assets/js/nv.d3.js"></script>
 </head>
 <body>
     <div id="app-container" class="container">
@@ -24,12 +24,12 @@
 	    	<input id="filetypes" type="text" placeholder="Filetypes space seperated" >
 	    	<div class="response"></div>
     	</div>
-
+    	<div class="loading"></div>
     	<div class="graph-container">
-    		<div class="loading"></div>
-	    	<svg id="pie"></svg>
-	    	<svg id="bar"></svg>
+	    	<svg id="pie" class="viz"></svg>
+	    	<svg id="bar" class="viz"></svg>
     	</div>
+        <footer>Made with <span style="color:red;">❤</span> by <a href="http://github.com/kaw2k">kaw2k</a> and <a href="http://github.com/mrecachinas">mrecachinas</a></footer>
     </div>
     <script src="/public/scripts/scripts.js"></script>
 </body>

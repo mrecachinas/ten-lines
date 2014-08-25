@@ -45,6 +45,7 @@ $(document).ready(function () {
                         $(".loading").html('Done in ' + elapsed.getSeconds() + ' seconds');
                         pie = new Pie(repo);
                         // bar = new Bar(repo);
+                        $('html, body').animate({ scrollTop: $('.graph-container').offset().top }, 750);
                     }.bind(this));
 
 			} else {

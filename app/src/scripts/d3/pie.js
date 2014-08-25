@@ -37,6 +37,8 @@ Pie.prototype.plot = function (data) {
               .transition().duration(1200)
               .attr('width', width)
               .attr('height', height)
+              .attr('viewBox', '0, 0, ' + width + ', ' + height)
+              .attr('preserveAspectRatio', 'xMinYMin')
               .call(chart);
         return chart;
     });
