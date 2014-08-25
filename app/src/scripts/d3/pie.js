@@ -26,20 +26,19 @@ Pie.prototype.plot = function (data) {
         var chart = nv.models.pieChart()
             .x(function(d) { return d.x })
             .y(function(d) { return d.y })
-            //.labelThreshold(.08)
-            //.showLabels(false)
+            .labelThreshold(.04)
+            // .showLabels(false)
             .showLegend(false)
             .color(d3.scale.category10().range())
             .width(width)
-            .height(height)
-            .donut(true);
-          // chart.pie.donutLabelsOutside(true).donut(true);
+            .height(height);
           d3.select("#pie")
-              //.datum(historicalBarChart)
               .datum(udata)
               .transition().duration(1200)
               .attr('width', width)
               .attr('height', height)
+              .attr('viewBox', '0, 0, ' + width + ', ' + height)
+              .attr('preserveAspectRatio', 'xMinYMin')
               .call(chart);
         return chart;
     });
