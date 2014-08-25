@@ -3,13 +3,14 @@ var Pie = function(data) {
 };
 
 Pie.prototype.crunch = function (data) {
-    var udata = { total: 0 };
+    var udata = [];
+    var count = 0;
     for (k in data.byUser) {
-        udata[k] = 0;
+        udata.push({ k : 0 });
         for (j in data.byUser[k]) {
-            udata[k] += data.byUser[k][j].length;
+            udata[count] += data.byUser[k][j].length;
         }
-        udata.total += udata[k];
+        count++;
     }
     return udata;
 };
@@ -33,7 +34,7 @@ Pie.prototype.plot = function (data) {
           d3.select("#pie")
               //.datum(historicalBarChart)
               .datum(udata)
-              .transition().duration(1200)
+              // .transition().duration(1200)
               .attr('width', width)
               .attr('height', height)
               .call(chart);
