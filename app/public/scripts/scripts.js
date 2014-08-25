@@ -92,10 +92,11 @@ var crunch = function (data) {
     var count = 0;
     for (k in data.byUser) {
         var obj = {};
-        obj[k] = 0;
+        obj.x = k;
+        obj.y = 0;
         udata.push(obj);
         for (j in data.byUser[k]) {
-            udata[count][k] += data.byUser[k][j].length;
+            udata[count].y += data.byUser[k][j].length;
         }
         count++;
     }
@@ -108,8 +109,8 @@ var plot = function (data) {
         var width = 500,
             height = 500;
         var chart = nv.models.pieChart()
-            .x(function(d) { return d.key })
-            .y(function(d) { return d.value })
+            .x(function(d) { return d.x })
+            .y(function(d) { return d.y })
             //.labelThreshold(.08)
             //.showLabels(false)
             .color(d3.scale.category10().range())
