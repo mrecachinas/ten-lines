@@ -14,7 +14,7 @@ var tmpls = {
 
 var Repo = require('./repo');
 var Pie = require('./d3/pie');
-var Line = require('./d3/line');
+var Bar = require('./d3/bar');
 window.repo;
 
 
@@ -32,16 +32,19 @@ $(document).ready(function () {
 			if (username !== "" && repoName !== "") {
 
                 $(".loading").html(tmpls.loading());
-
+                var start = new Date();
                 superagent
                     .get('/api/repo/' + username + '/' + repoName)
                     .query({filetypes: filetypes})
                     .end(function(res) {
                         if (!res.ok) { return; }
                         repo = new Repo(res.body);
-                        $(".loading").html('Done');
+                        var end = new Date();
+                        var elapsed = new Date();
+                        elapsed.setTime(end.getTime() - start.getTime());
+                        $(".loading").html('Done in ' + elapsed.getSeconds() + ' seconds');
                         pie = new Pie(repo);
-                        // line = new Line(repo);
+                        // bar = new Bar(repo);
                     }.bind(this));
 
 			} else {

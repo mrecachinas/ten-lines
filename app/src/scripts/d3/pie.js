@@ -1,8 +1,8 @@
 var Pie = function(data) {
-    plot(data);
+    this.plot(data);
 };
 
-var crunch = function (data) {
+Pie.prototype.crunch = function (data) {
     var udata = [];
     var count = 0;
     for (k in data.byUser) {
@@ -18,8 +18,8 @@ var crunch = function (data) {
     return udata;
 };
 
-var plot = function (data) {
-    var udata = crunch(data);
+Pie.prototype.plot = function (data) {
+    var udata = this.crunch(data);
     nv.addGraph(function() {
         var width = 500,
             height = 500;
