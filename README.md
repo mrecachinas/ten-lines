@@ -14,6 +14,15 @@ Knowing all of this, lines of code contributed is not a suitable metric.
 Contributing a net loss of code would be better! With all this said it has
 provided a fun data set to visualize.
 
+Install
+----------
+```bash
+$ npm install -g grunt-cli
+$ npm install
+$ grunt
+$ node server
+```
+
 Our Method
 ----------
 
