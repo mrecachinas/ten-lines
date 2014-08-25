@@ -28,6 +28,7 @@ var plot = function (data) {
             .y(function(d) { return d.y })
             //.labelThreshold(.08)
             //.showLabels(false)
+            .showLegend(false)
             .color(d3.scale.category10().range())
             .width(width)
             .height(height)
