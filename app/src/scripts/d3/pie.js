@@ -1,40 +1,41 @@
 var Pie = function(data) {
-    this.plot(data);
+    plot(data);
 };
 
-Pie.prototype.crunch = function (data) {
+var crunch = function (data) {
     var udata = [];
     var count = 0;
     for (k in data.byUser) {
-        udata.push({ k : 0 });
+        var obj = {};
+        obj[k] = 0;
+        udata.push(obj);
         for (j in data.byUser[k]) {
-            udata[count] += data.byUser[k][j].length;
+            udata[count][k] += data.byUser[k][j].length;
         }
         count++;
     }
     return udata;
 };
 
-Pie.prototype.plot = function (data) {
-    var udata = this.crunch(data);
+var plot = function (data) {
+    var udata = crunch(data);
     nv.addGraph(function() {
         var width = 500,
             height = 500;
         var chart = nv.models.pieChart()
             .x(function(d) { return d.key })
-            //.y(function(d) { return d.value })
+            .y(function(d) { return d.value })
             //.labelThreshold(.08)
             //.showLabels(false)
             .color(d3.scale.category10().range())
             .width(width)
             .height(height)
             .donut(true);
-
           // chart.pie.donutLabelsOutside(true).donut(true);
           d3.select("#pie")
               //.datum(historicalBarChart)
               .datum(udata)
-              // .transition().duration(1200)
+              .transition().duration(1200)
               .attr('width', width)
               .attr('height', height)
               .call(chart);
