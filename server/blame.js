@@ -104,7 +104,6 @@ module.exports = function(path, options) {
     var regs = path + '/**/*.+('+filetypes.join('|')+')';
 
     glob(regs, function(err, files) {
-        console.log(files);
         if (err) {return deferred.resolve([]);}
 
         var blamedFiles = map(parse, files);
