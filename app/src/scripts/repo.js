@@ -1,12 +1,12 @@
 
-
 var Repo = function(data) {
     this.setData(data);
 };
 
 Repo.prototype.setData = function(data) {
     // These have data
-    this.data = data || [];
+    this.raw = data || [];
+    this.data = this.raw;
     this.files = pluck('filename', this.data);
     this.flat = compose(flatten, pluck('contents'))(this.data);
 
@@ -26,6 +26,10 @@ Repo.prototype.setData = function(data) {
     )(this.flat);
 
     return this;
+};
+
+Repo.prototype.reset = function() {
+    this.setData();
 };
 
 

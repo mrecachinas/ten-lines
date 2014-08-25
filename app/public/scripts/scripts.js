@@ -81,28 +81,27 @@ var _ = require('lodash');
 var superagent = require('superagent');
 
 var tmpls = {
-    loading: require('../templates/loading.handlebars')
+    loading: require('../templates/loading.handlebars'),
+    graphs: require('../templates/graphs.handlebars')
 };
 
 
 var Repo = require('./repo');
 var Pie = require('./d3/pie');
 var Bar = require('./d3/bar');
-window.repo;
+window.repo = new Repo();
 
 
 $(document).ready(function () {
 
-	$('#filetypes').keydown(function(e) {
-		if (e.keyCode === 13) {
-            var filetypes = ($('#filetypes').val() || '')
-                .replace(/,/g, '')
-                .replace(/\./g, '')
-                .split(' ');
-
-            console.log(filetypes);
-        }
-    });
+	//$('#filetypes').keydown(function(e) {
+		//if (e.keyCode === 13) {
+            //var filetypes = ($('#filetypes').val() || '')
+                //.replace(/,/g, '')
+                //.replace(/\./g, '')
+                //.split(' ');
+        //}
+    //});
 
 
 	$('#username, #repo').keydown(function(e) {
@@ -112,13 +111,16 @@ $(document).ready(function () {
 
 
 			if (username !== "" && repoName !== "") {
+                repo.reset();
+                $('.graph-container').html(tmpls.graphs());
+
                 $(".loading").html(tmpls.loading());
                 var start = new Date();
                 superagent
                     .get('/api/repo/' + username + '/' + repoName)
                     .end(function(res) {
                         if (!res.ok) { return; }
-                        repo = new Repo(res.body);
+                        repo.setData(res.body);
                         var end = new Date();
                         var elapsed = new Date();
                         elapsed.setTime(end.getTime() - start.getTime());
@@ -136,8 +138,7 @@ $(document).ready(function () {
 });
 
 
-},{"../templates/loading.handlebars":5,"./d3/bar":1,"./d3/pie":2,"./repo":4,"jquery":13,"lodash":14,"ramda":15,"superagent":16}],4:[function(require,module,exports){
-
+},{"../templates/graphs.handlebars":5,"../templates/loading.handlebars":6,"./d3/bar":1,"./d3/pie":2,"./repo":4,"jquery":14,"lodash":15,"ramda":16,"superagent":17}],4:[function(require,module,exports){
 
 var Repo = function(data) {
     this.setData(data);
@@ -145,7 +146,8 @@ var Repo = function(data) {
 
 Repo.prototype.setData = function(data) {
     // These have data
-    this.data = data || [];
+    this.raw = data || [];
+    this.data = this.raw;
     this.files = pluck('filename', this.data);
     this.flat = compose(flatten, pluck('contents'))(this.data);
 
@@ -167,6 +169,10 @@ Repo.prototype.setData = function(data) {
     return this;
 };
 
+Repo.prototype.reset = function() {
+    this.setData();
+};
+
 
 
 module.exports = Repo;
@@ -178,9 +184,18 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   
 
 
+  return "<svg id=\"pie\" class=\"viz\"></svg>\n<svg id=\"bar\" class=\"viz\"></svg>\n";
+  });
+},{"handlebars/runtime":13}],6:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  
+
+
   return "<i class=\"ion-looping\"></i>\n";
   });
-},{"handlebars/runtime":12}],6:[function(require,module,exports){
+},{"handlebars/runtime":13}],7:[function(require,module,exports){
 "use strict";
 /*globals Handlebars: true */
 var base = require("./handlebars/base");
@@ -213,7 +228,7 @@ var Handlebars = create();
 Handlebars.create = create;
 
 exports["default"] = Handlebars;
-},{"./handlebars/base":7,"./handlebars/exception":8,"./handlebars/runtime":9,"./handlebars/safe-string":10,"./handlebars/utils":11}],7:[function(require,module,exports){
+},{"./handlebars/base":8,"./handlebars/exception":9,"./handlebars/runtime":10,"./handlebars/safe-string":11,"./handlebars/utils":12}],8:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -394,7 +409,7 @@ exports.log = log;var createFrame = function(object) {
   return obj;
 };
 exports.createFrame = createFrame;
-},{"./exception":8,"./utils":11}],8:[function(require,module,exports){
+},{"./exception":9,"./utils":12}],9:[function(require,module,exports){
 "use strict";
 
 var errorProps = ['description', 'fileName', 'lineNumber', 'message', 'name', 'number', 'stack'];
@@ -423,7 +438,7 @@ function Exception(message, node) {
 Exception.prototype = new Error();
 
 exports["default"] = Exception;
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -561,7 +576,7 @@ exports.program = program;function invokePartial(partial, name, context, helpers
 exports.invokePartial = invokePartial;function noop() { return ""; }
 
 exports.noop = noop;
-},{"./base":7,"./exception":8,"./utils":11}],10:[function(require,module,exports){
+},{"./base":8,"./exception":9,"./utils":12}],11:[function(require,module,exports){
 "use strict";
 // Build out our basic SafeString type
 function SafeString(string) {
@@ -573,7 +588,7 @@ SafeString.prototype.toString = function() {
 };
 
 exports["default"] = SafeString;
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 "use strict";
 /*jshint -W004 */
 var SafeString = require("./safe-string")["default"];
@@ -650,12 +665,12 @@ exports.escapeExpression = escapeExpression;function isEmpty(value) {
 }
 
 exports.isEmpty = isEmpty;
-},{"./safe-string":10}],12:[function(require,module,exports){
+},{"./safe-string":11}],13:[function(require,module,exports){
 // Create a simple path alias to allow browserify to resolve
 // the runtime on a supported path.
 module.exports = require('./dist/cjs/handlebars.runtime');
 
-},{"./dist/cjs/handlebars.runtime":6}],13:[function(require,module,exports){
+},{"./dist/cjs/handlebars.runtime":7}],14:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.1
  * http://jquery.com/
@@ -9847,7 +9862,7 @@ return jQuery;
 
 }));
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -16636,7 +16651,7 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 //     ramda.js 0.3.0
 //     https://github.com/CrossEye/ramda
 //     (c) 2013-2014 Scott Sauyet and Michael Hurley
@@ -20618,7 +20633,7 @@ return jQuery;
     }());
 }));
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -21624,7 +21639,7 @@ request.put = function(url, data, fn){
 
 module.exports = request;
 
-},{"emitter":17,"reduce":18}],17:[function(require,module,exports){
+},{"emitter":18,"reduce":19}],18:[function(require,module,exports){
 
 /**
  * Expose `Emitter`.
@@ -21782,7 +21797,7 @@ Emitter.prototype.hasListeners = function(event){
   return !! this.listeners(event).length;
 };
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 
 /**
  * Reduce `arr` with `fn`.

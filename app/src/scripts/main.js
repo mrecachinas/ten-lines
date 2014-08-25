@@ -8,28 +8,27 @@ var _ = require('lodash');
 var superagent = require('superagent');
 
 var tmpls = {
-    loading: require('../templates/loading.handlebars')
+    loading: require('../templates/loading.handlebars'),
+    graphs: require('../templates/graphs.handlebars')
 };
 
 
 var Repo = require('./repo');
 var Pie = require('./d3/pie');
 var Bar = require('./d3/bar');
-window.repo;
+window.repo = new Repo();
 
 
 $(document).ready(function () {
 
-	$('#filetypes').keydown(function(e) {
-		if (e.keyCode === 13) {
-            var filetypes = ($('#filetypes').val() || '')
-                .replace(/,/g, '')
-                .replace(/\./g, '')
-                .split(' ');
-
-            console.log(filetypes);
-        }
-    });
+	//$('#filetypes').keydown(function(e) {
+		//if (e.keyCode === 13) {
+            //var filetypes = ($('#filetypes').val() || '')
+                //.replace(/,/g, '')
+                //.replace(/\./g, '')
+                //.split(' ');
+        //}
+    //});
 
 
 	$('#username, #repo').keydown(function(e) {
@@ -39,13 +38,16 @@ $(document).ready(function () {
 
 
 			if (username !== "" && repoName !== "") {
+                repo.reset();
+                $('.graph-container').html(tmpls.graphs());
+
                 $(".loading").html(tmpls.loading());
                 var start = new Date();
                 superagent
                     .get('/api/repo/' + username + '/' + repoName)
                     .end(function(res) {
                         if (!res.ok) { return; }
-                        repo = new Repo(res.body);
+                        repo.setData(res.body);
                         var end = new Date();
                         var elapsed = new Date();
                         elapsed.setTime(end.getTime() - start.getTime());
