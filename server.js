@@ -47,9 +47,15 @@ app.get('/repo/:username/:repo', function(req, res) {
                         date: Date.now()
                     });
 
-                    res.send(files);
+                    setTimeout(function() {
+                        require('rimraf')(dir, function(err) {
+                            if (err) {
+                                console.log(err);
+                            }
+                        });
+                    }, 1000);
 
-                    require('rimraf')(dir);
+                    res.send(files);
                 });
             });
         } else {
