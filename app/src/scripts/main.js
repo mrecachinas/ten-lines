@@ -9,7 +9,8 @@ var superagent = require('superagent');
 
 var tmpls = {
     loading: require('../templates/loading.handlebars'),
-    graphs: require('../templates/graphs.handlebars')
+    graphs: require('../templates/graphs.handlebars'),
+    filter: require('../templates/filter.handlebars')
 };
 
 
@@ -18,18 +19,34 @@ var Pie = require('./d3/pie');
 var Bar = require('./d3/bar');
 window.repo = new Repo();
 
+var renderGraphs = function (data) {
+    $('.graph-container').html(tmpls.graphs());
+    if (data) {
+        var pie = new Pie(data);
+        var bar = new Bar(data);
+
+        console.log(tmpls.filter({
+            title: 'new filter',
+            options: [
+                {label: 'one'},
+                {label: 'two'}
+            ]
+        }));
+
+        $('#filters').html(tmpls.filter({
+            title: 'new filter',
+            options: [
+                {label: 'one'},
+                {label: 'two'}
+            ]
+        }));
+    }
+}
+
 
 $(document).ready(function () {
 
-	//$('#filetypes').keydown(function(e) {
-		//if (e.keyCode === 13) {
-            //var filetypes = ($('#filetypes').val() || '')
-                //.replace(/,/g, '')
-                //.replace(/\./g, '')
-                //.split(' ');
-        //}
-    //});
-
+    renderGraphs();
 
 	$('#username, #repo').keydown(function(e) {
 		if (e.keyCode === 13) {
@@ -39,7 +56,7 @@ $(document).ready(function () {
 
 			if (username !== "" && repoName !== "") {
                 repo.reset();
-                $('.graph-container').html(tmpls.graphs());
+                renderGraphs();
 
                 $(".loading").html(tmpls.loading());
                 var start = new Date();
@@ -63,7 +80,3 @@ $(document).ready(function () {
 	});
 });
 
-var renderGraphs = function (data) {
-    var pie = new Pie(data);
-    var bar = new Bar(data);
-}

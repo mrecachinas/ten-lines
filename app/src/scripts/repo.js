@@ -18,12 +18,12 @@ Repo.prototype.setData = function(data) {
     this.byDate = compose(
         mapObj(users),
         dates
-    )(this.flat);
+    )(this.flat) || [];
 
     this.byUser = compose(
         mapObj(dates),
         users
-    )(this.flat);
+    )(this.flat) || [];
 
     return this;
 };

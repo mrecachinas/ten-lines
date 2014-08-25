@@ -82,7 +82,8 @@ var superagent = require('superagent');
 
 var tmpls = {
     loading: require('../templates/loading.handlebars'),
-    graphs: require('../templates/graphs.handlebars')
+    graphs: require('../templates/graphs.handlebars'),
+    filter: require('../templates/filter.handlebars')
 };
 
 
@@ -91,18 +92,34 @@ var Pie = require('./d3/pie');
 var Bar = require('./d3/bar');
 window.repo = new Repo();
 
+var renderGraphs = function (data) {
+    $('.graph-container').html(tmpls.graphs());
+    if (data) {
+        var pie = new Pie(data);
+        var bar = new Bar(data);
+
+        console.log(tmpls.filter({
+            title: 'new filter',
+            options: [
+                {label: 'one'},
+                {label: 'two'}
+            ]
+        }));
+
+        $('#filters').html(tmpls.filter({
+            title: 'new filter',
+            options: [
+                {label: 'one'},
+                {label: 'two'}
+            ]
+        }));
+    }
+}
+
 
 $(document).ready(function () {
 
-	//$('#filetypes').keydown(function(e) {
-		//if (e.keyCode === 13) {
-            //var filetypes = ($('#filetypes').val() || '')
-                //.replace(/,/g, '')
-                //.replace(/\./g, '')
-                //.split(' ');
-        //}
-    //});
-
+    renderGraphs();
 
 	$('#username, #repo').keydown(function(e) {
 		if (e.keyCode === 13) {
@@ -112,7 +129,7 @@ $(document).ready(function () {
 
 			if (username !== "" && repoName !== "") {
                 repo.reset();
-                $('.graph-container').html(tmpls.graphs());
+                renderGraphs();
 
                 $(".loading").html(tmpls.loading());
                 var start = new Date();
@@ -136,11 +153,8 @@ $(document).ready(function () {
 	});
 });
 
-var renderGraphs = function (data) {
-    var pie = new Pie(data);
-    var bar = new Bar(data);
-}
-},{"../templates/graphs.handlebars":5,"../templates/loading.handlebars":6,"./d3/bar":1,"./d3/pie":2,"./repo":4,"jquery":14,"lodash":15,"ramda":16,"superagent":17}],4:[function(require,module,exports){
+
+},{"../templates/filter.handlebars":5,"../templates/graphs.handlebars":6,"../templates/loading.handlebars":7,"./d3/bar":1,"./d3/pie":2,"./repo":4,"jquery":15,"lodash":16,"ramda":17,"superagent":18}],4:[function(require,module,exports){
 
 var Repo = function(data) {
     this.setData(data);
@@ -161,12 +175,12 @@ Repo.prototype.setData = function(data) {
     this.byDate = compose(
         mapObj(users),
         dates
-    )(this.flat);
+    )(this.flat) || [];
 
     this.byUser = compose(
         mapObj(dates),
         users
-    )(this.flat);
+    )(this.flat) || [];
 
     return this;
 };
@@ -183,12 +197,39 @@ module.exports = Repo;
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
+  var buffer = "", stack1, helper, functionType="function", escapeExpression=this.escapeExpression, self=this;
+
+function program1(depth0,data) {
+  
+  var buffer = "", stack1, helper;
+  buffer += "\n        <label>";
+  if (helper = helpers.label) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.label); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</label>\n        <input type=\"checkbox\" />\n    ";
+  return buffer;
+  }
+
+  buffer += "<div class=\"filter-group\">\n    <h2>";
+  if (helper = helpers.title) { stack1 = helper.call(depth0, {hash:{},data:data}); }
+  else { helper = (depth0 && depth0.title); stack1 = typeof helper === functionType ? helper.call(depth0, {hash:{},data:data}) : helper; }
+  buffer += escapeExpression(stack1)
+    + "</h2>\n    ";
+  stack1 = helpers.each.call(depth0, (depth0 && depth0.options), {hash:{},inverse:self.noop,fn:self.program(1, program1, data),data:data});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\n</div>\n";
+  return buffer;
+  });
+},{"handlebars/runtime":14}],6:[function(require,module,exports){
+var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
+  this.compilerInfo = [4,'>= 1.0.0'];
+helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   
 
 
-  return "<svg id=\"pie\" class=\"viz\"></svg>\n<svg id=\"bar\" class=\"viz\"></svg>\n";
+  return "<div id=\"filters\"></div>\n<svg id=\"pie\" class=\"viz\"></svg>\n<svg id=\"bar\" class=\"viz\"></svg>\n";
   });
-},{"handlebars/runtime":13}],6:[function(require,module,exports){
+},{"handlebars/runtime":14}],7:[function(require,module,exports){
 var templater = require("handlebars/runtime").default.template;module.exports = templater(function (Handlebars,depth0,helpers,partials,data) {
   this.compilerInfo = [4,'>= 1.0.0'];
 helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
@@ -197,7 +238,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
   return "<i class=\"ion-looping\"></i>\n";
   });
-},{"handlebars/runtime":13}],7:[function(require,module,exports){
+},{"handlebars/runtime":14}],8:[function(require,module,exports){
 "use strict";
 /*globals Handlebars: true */
 var base = require("./handlebars/base");
@@ -230,7 +271,7 @@ var Handlebars = create();
 Handlebars.create = create;
 
 exports["default"] = Handlebars;
-},{"./handlebars/base":8,"./handlebars/exception":9,"./handlebars/runtime":10,"./handlebars/safe-string":11,"./handlebars/utils":12}],8:[function(require,module,exports){
+},{"./handlebars/base":9,"./handlebars/exception":10,"./handlebars/runtime":11,"./handlebars/safe-string":12,"./handlebars/utils":13}],9:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -411,7 +452,7 @@ exports.log = log;var createFrame = function(object) {
   return obj;
 };
 exports.createFrame = createFrame;
-},{"./exception":9,"./utils":12}],9:[function(require,module,exports){
+},{"./exception":10,"./utils":13}],10:[function(require,module,exports){
 "use strict";
 
 var errorProps = ['description', 'fileName', 'lineNumber', 'message', 'name', 'number', 'stack'];
@@ -440,7 +481,7 @@ function Exception(message, node) {
 Exception.prototype = new Error();
 
 exports["default"] = Exception;
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -578,7 +619,7 @@ exports.program = program;function invokePartial(partial, name, context, helpers
 exports.invokePartial = invokePartial;function noop() { return ""; }
 
 exports.noop = noop;
-},{"./base":8,"./exception":9,"./utils":12}],11:[function(require,module,exports){
+},{"./base":9,"./exception":10,"./utils":13}],12:[function(require,module,exports){
 "use strict";
 // Build out our basic SafeString type
 function SafeString(string) {
@@ -590,7 +631,7 @@ SafeString.prototype.toString = function() {
 };
 
 exports["default"] = SafeString;
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 "use strict";
 /*jshint -W004 */
 var SafeString = require("./safe-string")["default"];
@@ -667,12 +708,12 @@ exports.escapeExpression = escapeExpression;function isEmpty(value) {
 }
 
 exports.isEmpty = isEmpty;
-},{"./safe-string":11}],13:[function(require,module,exports){
+},{"./safe-string":12}],14:[function(require,module,exports){
 // Create a simple path alias to allow browserify to resolve
 // the runtime on a supported path.
 module.exports = require('./dist/cjs/handlebars.runtime');
 
-},{"./dist/cjs/handlebars.runtime":7}],14:[function(require,module,exports){
+},{"./dist/cjs/handlebars.runtime":8}],15:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v2.1.1
  * http://jquery.com/
@@ -9864,7 +9905,7 @@ return jQuery;
 
 }));
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -16653,7 +16694,7 @@ return jQuery;
 }.call(this));
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 //     ramda.js 0.3.0
 //     https://github.com/CrossEye/ramda
 //     (c) 2013-2014 Scott Sauyet and Michael Hurley
@@ -20635,7 +20676,7 @@ return jQuery;
     }());
 }));
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -21641,7 +21682,7 @@ request.put = function(url, data, fn){
 
 module.exports = request;
 
-},{"emitter":18,"reduce":19}],18:[function(require,module,exports){
+},{"emitter":19,"reduce":20}],19:[function(require,module,exports){
 
 /**
  * Expose `Emitter`.
@@ -21799,7 +21840,7 @@ Emitter.prototype.hasListeners = function(event){
   return !! this.listeners(event).length;
 };
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 
 /**
  * Reduce `arr` with `fn`.
