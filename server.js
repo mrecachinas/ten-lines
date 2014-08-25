@@ -11,7 +11,6 @@ var blame   = require('./server/blame');
 var Datastore = require('nedb')
 var repos = new Datastore({ filename: './dbs/repos', autoload: true });
 repos.remove({}, function (err, numRemoved) {
-    console.log('Wippped db');
 });
 
 
@@ -24,23 +23,18 @@ app.get('/repo/:username/:repo', function(req, res) {
     var url = 'https://test:test@github.com/'+id+'.git';
     var dir = '/var/tmp/'+repo+'-'+Math.floor(Math.random()*1000000);
 
-    var options = {
-        filetypes: (req.query.filetypes || '').split(',')
-    };
-
     repos.findOne({ repo: id }, function (err, doc) {
         if (err) {
             return res.send('something went wrong with the db sorry dude');
         }
 
         if (!doc) {
-            console.log(url);
             git.clone(url, dir, function(err, repo) {
                 if (err) {
                     return res.send('error finding repo');
                 }
 
-                blame(dir, options).then(function(files) {
+                blame(dir).then(function(files) {
                     repos.insert({
                         repo: id,
                         files: files,

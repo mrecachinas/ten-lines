@@ -93,23 +93,30 @@ window.repo;
 
 
 $(document).ready(function () {
-	$('input').keydown(function(e) {
-		if (e.keyCode === 13) {
-			var username = $('#username').val();
-			var repoName = $('#repo').val();
 
-			var filetypes = ($('#filetypes').val() || '')
+	$('#filetypes').keydown(function(e) {
+		if (e.keyCode === 13) {
+            var filetypes = ($('#filetypes').val() || '')
                 .replace(/,/g, '')
                 .replace(/\./g, '')
                 .split(' ');
 
-			if (username !== "" && repoName !== "") {
+            console.log(filetypes);
+        }
+    });
 
+
+	$('#username, #repo').keydown(function(e) {
+		if (e.keyCode === 13) {
+			var username = $('#username').val();
+			var repoName = $('#repo').val();
+
+
+			if (username !== "" && repoName !== "") {
                 $(".loading").html(tmpls.loading());
                 var start = new Date();
                 superagent
                     .get('/api/repo/' + username + '/' + repoName)
-                    .query({filetypes: filetypes})
                     .end(function(res) {
                         if (!res.ok) { return; }
                         repo = new Repo(res.body);

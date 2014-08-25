@@ -58,16 +58,20 @@ var readFile = function(file) {
 var parse = function(filename) {
     var deferred = Q.defer();
 
-    gitblame(filename, function(err, lines) {
-        if (err) {return deferred.reject();}
+    try {
+        gitblame(filename, function(err, lines) {
+            if (err) {return deferred.reject();}
 
-        lines = removeBlanks(lines);
+            lines = removeBlanks(lines);
 
-        deferred.resolve({
-            filename: filename,
-            contents: map(rawBlameLineToObject, lines)
+            deferred.resolve({
+                filename: filename,
+                contents: map(rawBlameLineToObject, lines)
+            });
         });
-    });
+    } catch(err) {
+        deferred.reject();
+    }
 
     return deferred.promise;
 }
@@ -104,21 +108,14 @@ var rawBlameLineToObject = function(str) {
 };
 
 
-module.exports = function(path, options) {
+module.exports = function(path) {
     var deferred = Q.defer();
-
-    var filetypes = _.compact(options.filetypes)
-    if (!filetypes.length) {
-        filetypes.push('js');
-    }
 
     if (!path) {
         deferred.resolve([]);
     };
 
-    var regs = path + '/**/*.+('+filetypes.join('|')+')';
-
-    glob(regs, function(err, files) {
+    glob(path+'/**/*.*', function(err, files) {
         if (err) {return deferred.resolve([]);}
 
         var blamedFiles = map(parse, files);
@@ -129,4 +126,4 @@ module.exports = function(path, options) {
     });
 
     return deferred.promise
-}
+};
