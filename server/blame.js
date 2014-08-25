@@ -86,8 +86,7 @@ var rawBlameLineToObject = function(str) {
         username = insideParens[0] + ' ' + insideParens[1] + ' ' + insideParens[2];
         date = insideParens[3];
         time = insideParens[4];
-    }
-    else {
+    } else {
         username = insideParens[0];
         date = insideParens[1];
         time = insideParens[2];
