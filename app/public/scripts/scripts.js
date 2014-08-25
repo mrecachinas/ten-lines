@@ -125,8 +125,7 @@ $(document).ready(function () {
                         var elapsed = new Date();
                         elapsed.setTime(end.getTime() - start.getTime());
                         $(".loading").html('Done in ' + elapsed.getSeconds() + ' seconds');
-                        pie = new Pie(repo);
-                        // bar = new Bar(repo);
+                        renderGraphs(repo);
                         $('html, body').animate({ scrollTop: $('.graph-container').offset().top }, 750);
                     }.bind(this));
 
@@ -137,7 +136,10 @@ $(document).ready(function () {
 	});
 });
 
-
+var renderGraphs = function (data) {
+    var pie = new Pie(data);
+    var bar = new Bar(data);
+}
 },{"../templates/graphs.handlebars":5,"../templates/loading.handlebars":6,"./d3/bar":1,"./d3/pie":2,"./repo":4,"jquery":14,"lodash":15,"ramda":16,"superagent":17}],4:[function(require,module,exports){
 
 var Repo = function(data) {
