@@ -118,6 +118,12 @@ module.exports = function (grunt) {
         app.on('close', done);
     });
 
+    grunt.registerTask('build', [
+        'copy:build',
+        'browserify',
+        'less'
+    ]);
+
     grunt.registerTask('default', ['concurrent:dev']);
 
     grunt.registerTask('deploy', ['copy:build', 'browserify', 'less', 'copy:deploy', 'clean:deploy']);
