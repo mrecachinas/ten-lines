@@ -33,20 +33,6 @@ Bar.prototype.crunch = function (data) {
     return dates;
 };
 
-/*
-[ 
-  {
-    key: USERNAME,
-    values: {
-      DATE: {
-        x: DATE,
-        y: LOC
-      }
-    } 
-  }
-]
-*/
-
 Bar.prototype.plot = function (data) {
     dates = this.crunch(data);
     nv.addGraph(function() {
@@ -55,9 +41,9 @@ Bar.prototype.plot = function (data) {
         var chart = nv.models.multiBarChart()
           .transitionDuration(350)
           .reduceXTicks(true)   //If 'false', every single x-axis tick label will be rendered.
-          .rotateLabels(90)      //Angle to rotate x-axis labels.
-          .showControls(true)   //Allow user to switch between 'Grouped' and 'Stacked' mode.
-          .groupSpacing(0.1)    //Distance between each group of bars.
+          .rotateLabels(0)      //Angle to rotate x-axis labels.
+          .showControls(false)   //Allow user to switch between 'Grouped' and 'Stacked' mode.
+          .groupSpacing(0.01)    //Distance between each group of bars.
           .showLegend(false)
           .width(width2)
           .height(height2);
@@ -81,7 +67,30 @@ Bar.prototype.plot = function (data) {
 
         return chart;
     });
+    d3.selectAll("input").on("change", change);
 
+    var timeout = setTimeout(function() {
+      d3.select("input[value=\"grouped\"]").property("checked", true).each(change);
+    }, 2000);
+
+    function change() {
+      clearTimeout(timeout);
+      if (this.value === "grouped") transitionGrouped();
+      else transitionStacked();
+    }
+
+    function transitionGrouped() {
+      y.domain([0, yGroupMax]);
+
+      rect.transition()
+          .duration(500)
+          .delay(function(d, i) { return i * 10; })
+          .attr("x", function(d, i, j) { return x(d.x) + x.rangeBand() / n * j; })
+          .attr("width", x.rangeBand() / n)
+        .transition()
+          .attr("y", function(d) { return y(d.y); })
+          .attr("height", function(d) { return height - y(d.y); });
+    }
 };
 
 module.exports = Bar;
