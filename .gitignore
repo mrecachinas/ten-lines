@@ -28,3 +28,6 @@ build/Release
 node_modules
 
 dbs/*
+
+# Ignore our public folder, this should be built with grunt
+app/public/
