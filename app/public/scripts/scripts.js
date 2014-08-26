@@ -31,7 +31,6 @@ Bar.prototype.crunch = function (data) {
     for (var i = 0; i < dates.length; i++) {
         dates[i].values = lodash.sortBy(dates[i].values, 'x');
     }
-    window.dates = dates;
     return dates;
 };
 
