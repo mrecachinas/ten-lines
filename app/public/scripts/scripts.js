@@ -51,13 +51,17 @@ Bar.prototype.crunch = function (data) {
 Bar.prototype.plot = function (data) {
     dates = this.crunch(data);
     nv.addGraph(function() {
+        var width2 = 500,
+            height2 = 500;
         var chart = nv.models.multiBarChart()
           .transitionDuration(350)
           .reduceXTicks(true)   //If 'false', every single x-axis tick label will be rendered.
           .rotateLabels(90)      //Angle to rotate x-axis labels.
           .showControls(true)   //Allow user to switch between 'Grouped' and 'Stacked' mode.
           .groupSpacing(0.1)    //Distance between each group of bars.
-          .showLegend(false);
+          .showLegend(false)
+          .width(width2)
+          .height(height2);
         ;
 
         chart.xAxis
@@ -68,6 +72,10 @@ Bar.prototype.plot = function (data) {
 
         d3.select('#bar')
             .datum(dates)
+            .transition().duration(1200)
+              .attr('width', width2)
+              .attr('height', height2)
+              .attr('viewBox', '0, 0, ' + width2 + ', ' + height2)
             .call(chart);
 
         nv.utils.windowResize(chart.update);
