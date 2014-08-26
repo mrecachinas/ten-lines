@@ -128,6 +128,7 @@ Pie.prototype.plot = function (data) {
             // .showLabels(false)
             .showLegend(false)
             .color(d3.scale.category10().range())
+            // .donut(true)
             .width(width)
             .height(height);
           d3.select("#pie")

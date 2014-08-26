@@ -81,20 +81,21 @@ var parse = function(filename) {
 var rawBlameLineToObject = function(str) {
     var insideParens = /\(([^)]+)\)/.exec(str)[1].split(' ');
     var username, date, time;
-
-    if (/\d{4}\-\d{2}\-\d{2}/.exec(insideParens[1]) === null) {
-        username = insideParens[0] + ' ' + insideParens[1];
-        date = insideParens[2];
-        time = insideParens[3];
+    insideParens = insideParens.filter(function (e) { return e !== '' ;} );
+    if (/\d{4}\-\d{2}\-\d{2}/.exec(insideParens[1]) !== null) {
+        username = insideParens[0];
+        date = insideParens[1];
+        time = insideParens[2];
     } else if (/\d{4}\-\d{2}\-\d{2}/.exec(insideParens[2]) === null) {
         username = insideParens[0] + ' ' + insideParens[1] + ' ' + insideParens[2];
         date = insideParens[3];
         time = insideParens[4];
     } else {
-        username = insideParens[0];
-        date = insideParens[1];
-        time = insideParens[2];
+        username = insideParens[0] + ' ' + insideParens[1];
+        date = insideParens[2];
+        time = insideParens[3];
     }
+
     username = username.trim();
     var obj = { };
     obj.commit_hash = /^[A-z0-9]+/.exec(str)[0];
