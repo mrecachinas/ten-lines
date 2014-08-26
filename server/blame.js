@@ -116,7 +116,28 @@ module.exports = function(path) {
     };
 
     glob(path+'/**/*.*', function(err, files) {
+
         if (err) {return deferred.resolve([]);}
+        var len = files.length;
+
+        var shouldIgnore = function(name) {
+            var ignore = [/\.min\./, /\.png$/, /\.jpg/, /\.jpeg/, /\.gif/];
+            return reduce(function(memo, r) {
+                return memo || r.test(name);
+            }, false, ignore);
+        }
+
+
+        files = reject(function(file) {
+            if (shouldIgnore(file)) {
+                console.log(file);
+            }
+            return shouldIgnore(file);
+        }, files);
+
+        if (len > files.length) {
+            console.log('ignoring files');
+        }
 
         var blamedFiles = map(parse, files);
 

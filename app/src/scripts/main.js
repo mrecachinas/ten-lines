@@ -19,6 +19,14 @@ var Bar = require('./d3/bar');
 window.repo = new Repo();
 
 
+var renderGraphs = function (data) {
+    $('.graph-container').html(tmpls.graphs());
+    if (data) {
+        var pie = new Pie(data);
+        var bar = new Bar(data);
+    }
+}
+
 $(document).ready(function () {
 
 	//$('#filetypes').keydown(function(e) {
@@ -63,7 +71,3 @@ $(document).ready(function () {
 	});
 });
 
-var renderGraphs = function (data) {
-    var pie = new Pie(data);
-    var bar = new Bar(data);
-}
