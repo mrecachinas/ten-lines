@@ -31,11 +31,11 @@ module.exports = function (grunt) {
         browserify: {
             options: {
                 debug: true,
-                transform: ['browserify-handlebars'],
-                extensions: ['.handlebars']
+                transform: ['reactify'],
+                extensions: ['.jsx']
             },
             dist: {
-                files: { 'app/public/scripts/scripts.js': 'app/src/scripts/main.js'}
+                files: { 'app/public/scripts/scripts.js': 'app/src/scripts/scripts.js'}
             }
         },
 
