@@ -110,15 +110,19 @@ var FilterStore = Fluxxor.createStore({
 var actions = {
     addFilter: function(filename) {
         this.dispatch('FILTER:FILE', {filter: filename});
+        this.dispatch('FLAT:UPDATE');
     },
     userFilter: function(username) {
         this.dispatch('FILTER:USER', {username: username});
+        this.dispatch('FLAT:UPDATE');
     },
     resetFilters: function() {
         this.dispatch('FILTER:RESET');
+        this.dispatch('FLAT:UPDATE');
     },
     addExtension: function(ext) {
         this.dispatch('FILTER:EXTENSION', {ext: ext});
+        this.dispatch('FLAT:UPDATE');
     }
 };
 

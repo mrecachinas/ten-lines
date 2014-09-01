@@ -3,6 +3,7 @@ var Fluxxor = require('fluxxor');
 
 var data = [
     require('./repo'),
+    require('./flat'),
     require('./filters')
 ];
 
