@@ -170,8 +170,6 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
     render: function() {
         var topFive = take(5, this.state.byUser);
 
-        console.log(topFive);
-
         return (
             React.DOM.div(null, 
                 React.DOM.h1(null, "Top Contributor"), 
@@ -211,8 +209,12 @@ var RepoView  = React.createClass({displayName: 'RepoView',
         return (
             React.DOM.div(null, 
                 React.DOM.h2(null, "Repo View"), 
-                Filters(null), 
-                TopContributors(null)
+                React.DOM.div({className: "half"}, 
+                    Filters(null)
+                ), 
+                React.DOM.div({className: "half"}, 
+                    TopContributors(null)
+                )
             )
         );
     }

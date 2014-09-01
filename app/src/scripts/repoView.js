@@ -15,8 +15,12 @@ var RepoView  = React.createClass({
         return (
             <div>
                 <h2>Repo View</h2>
-                <Filters />
-                <TopContributors />
+                <div className="half">
+                    <Filters />
+                </div>
+                <div className="half">
+                    <TopContributors />
+                </div>
             </div>
         );
     }

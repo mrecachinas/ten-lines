@@ -32,8 +32,6 @@ var FilterFiles = React.createClass({
     render: function() {
         var topFive = take(5, this.state.byUser);
 
-        console.log(topFive);
-
         return (
             <div>
                 <h1>Top Contributor</h1>
