@@ -63,6 +63,7 @@ var FilterStore = Fluxxor.createStore({
             this.filtered = filter(function(file) {
                 return file.contents.length > 0;
             }, this.filtered);
+            //this.filtered = filter(where({contents: compose(gt(0), prop('length'))}))
 
             this.emit('change')
         });
@@ -110,19 +111,19 @@ var FilterStore = Fluxxor.createStore({
 var actions = {
     addFilter: function(filename) {
         this.dispatch('FILTER:FILE', {filter: filename});
-        this.dispatch('FLAT:UPDATE');
+        this.dispatch('FILTER:UPDATED');
     },
     userFilter: function(username) {
         this.dispatch('FILTER:USER', {username: username});
-        this.dispatch('FLAT:UPDATE');
+        this.dispatch('FILTER:UPDATED');
     },
     resetFilters: function() {
         this.dispatch('FILTER:RESET');
-        this.dispatch('FLAT:UPDATE');
+        this.dispatch('FILTER:UPDATED');
     },
     addExtension: function(ext) {
         this.dispatch('FILTER:EXTENSION', {ext: ext});
-        this.dispatch('FLAT:UPDATE');
+        this.dispatch('FILTER:UPDATED');
     }
 };
 

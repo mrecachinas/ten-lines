@@ -1,4 +1,18 @@
 var Fluxxor = require('fluxxor');
+var _ = require('../utils');
+
+var groupAndSort = function(key, value) {
+    key = key || 'key';
+    value = value || 'value';
+
+    return compose(
+        reverse,
+        sortBy(prop(value)),
+        map(_.toPairsObj(key, value)),
+        toPairs,
+        countBy(prop(key))
+    );
+};
 
 // =============================================================================
 // Store: Private  API
@@ -7,7 +21,7 @@ var FlatStore = Fluxxor.createStore({
     // map actions from the dispatcher to our private methods
     actions: {
         'REPO:RESET': 'update',
-        'FLAT:UPDATE': 'update'
+        'FILTER:UPDATED': 'update'
     },
 
     initialize: function() {
@@ -22,18 +36,21 @@ var FlatStore = Fluxxor.createStore({
             var flat = this.flat = compose(flatten, pluck('contents'))(filtered);
 
             this.byUser = compose(
-                reverse,
-                sortBy(prop('count')),
-                map(function(arr) {
-                    return {
-                        username: arr[0],
-                        count: arr[1],
-                        percent: ('' + (arr[1] / flat.length) * 100).substring(0, 6)
-                    }
+                map(function(obj) {
+                    return mixin(obj, {
+                        percent: ('' + (obj.count / flat.length) * 100).substring(0, 6)
+                    });
                 }),
-                toPairs,
-                countBy(prop('username'))
+                groupAndSort('username', 'count')
             )(this.flat);
+
+            this.byDate = compose(
+                reverse,
+                sortBy(prop('date')),
+                groupAndSort('date', 'count')
+            )(this.flat);
+
+            console.log(last(this.byDate).date);
 
             this.emit('change');
         });
@@ -43,7 +60,7 @@ var FlatStore = Fluxxor.createStore({
     // Expose our state via this method (for read only protection)
     getState: function() {
         return compose(
-            pick(['flat', 'byUser'])
+            pick(['flat', 'byUser', 'byDate'])
         )(this);
     }
 });
