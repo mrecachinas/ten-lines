@@ -91,6 +91,7 @@ module.exports = function (grunt) {
                     'browserify',
                     'less',
                     'proxy:dev',
+                    'server',
                     'watch'
                 ],
                 options: {
@@ -115,6 +116,12 @@ module.exports = function (grunt) {
     grunt.registerTask('proxy', function () {
         var done = this.async();
         var app = require('./utils/proxy')();
+        app.on('close', done);
+    });
+
+    grunt.registerTask('server', function() {
+        var done = this.async();
+        var app = require('./server');
         app.on('close', done);
     });
 
