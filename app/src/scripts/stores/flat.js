@@ -35,9 +35,6 @@ var FlatStore = Fluxxor.createStore({
                 countBy(prop('username'))
             )(this.flat);
 
-            console.log(this.byUser);
-
-
             this.emit('change');
         });
     },
