@@ -31,3 +31,6 @@ dbs/*
 
 # Ignore our public folder, this should be built with grunt
 app/public/
+
+# No usernames and passwords for you
+config.js

@@ -38,7 +38,7 @@ var FilterStore = Fluxxor.createStore({
             this.filtered = reject(reduceOrRegExp(regs), this.filtered);
 
             // Filter based on the files the user selected
-            var regs = map(function(file) { return new RegExp(file + '$'); }, this.extensions);
+            var regs = map(function(file) { return new RegExp('\\.' + file + '$'); }, this.extensions);
             this.filtered = reject(reduceOrRegExp(regs), this.filtered);
 
             // Filter based on the username

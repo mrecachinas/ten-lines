@@ -40,6 +40,9 @@ var FetchRepo = React.createClass({
 
                 <div className="response">
                     {loading}
+                    <span className="error">
+                        {this.props.repo.error ? this.props.repo.error : ''}
+                    </span>
                 </div>
             </div>
         );

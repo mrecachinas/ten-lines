@@ -14,14 +14,25 @@ Knowing all of this, lines of code contributed is not a suitable metric.
 Contributing a net loss of code would be better! With all this said it has
 provided a fun data set to visualize.
 
+
 Install
-----------
+-------
 ```bash
 $ npm install -g grunt-cli
 $ npm install
 $ grunt
-$ node server
 ```
+Now you can visit the site at **localhost:4444**.
+
+
+Private Repo Support
+--------------------
+
+Currently the public app doesn't process private github repos. If you want,
+simply clone the repo, (follow the install instructions), copy
+`./config.defaults.js` to `config.js` and replace the username / password fields
+with your github credentials.
+
 
 Our Method
 ----------

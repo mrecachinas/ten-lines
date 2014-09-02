@@ -40,7 +40,10 @@ var FetchRepo = React.createClass({displayName: 'FetchRepo',
                     placeholder: "Repo Name"}), 
 
                 React.DOM.div({className: "response"}, 
-                    loading
+                    loading, 
+                    React.DOM.span({className: "error"}, 
+                        this.props.repo.error ? this.props.repo.error : ''
+                    )
                 )
             )
         );
@@ -319,7 +322,7 @@ var FilterStore = Fluxxor.createStore({
             this.filtered = reject(reduceOrRegExp(regs), this.filtered);
 
             // Filter based on the files the user selected
-            var regs = map(function(file) { return new RegExp(file + '$'); }, this.extensions);
+            var regs = map(function(file) { return new RegExp('\\.' + file + '$'); }, this.extensions);
             this.filtered = reject(reduceOrRegExp(regs), this.filtered);
 
             // Filter based on the username
@@ -510,30 +513,6 @@ var Fluxxor = require('fluxxor');
 var superagent = require('superagent');
 
 
-//var filenamestuff = reduce(function(memo, obj){
-    //var lines = map(mixin({filename: obj.filename}), obj.contents);
-    //return concat(memo, lines);
-//}, []);
-
-//var flatWIthNames = filenamestuff(repo.raw)
-//var byFile = groupBy(prop('filename'), flatWIthNames)
-
-//var isVaried = compose(
-    //function(arr) { return arr.length > 1 },
-    //uniq,
-    //pluck('username'),
-    //arrAt(1)
-//);
-
-
-//var arrPairs = compose(
-    //filter(function() {})
-    //filter(isVaried)
-//)(toPairs(byFile))
-
-//log(arrPairs)
-
-
 // =============================================================================
 // Store: Private  API
 // =============================================================================
@@ -541,16 +520,19 @@ var RepoStore = Fluxxor.createStore({
     // map actions from the dispatcher to our private methods
     actions: {
         'REPO:RESET': 'reset',
-        'REPO:FETCH': 'fetch'
+        'REPO:FETCH': 'fetch',
+        'REPO:ERROR': 'setError'
     },
 
     initialize: function() {
         this.raw = [];
         this.fetching = false;
+        this.error = false;
     },
 
     reset: function(payload) {
         this.fetching = false;
+        this.error = false;
 
         this.raw = map(function(obj) {
             var filename = obj.filename.split('/').slice(4).join('/');
@@ -565,14 +547,21 @@ var RepoStore = Fluxxor.createStore({
     },
 
     fetch: function() {
+        this.error = false;
         this.fetching = true;
+        this.emit('change');
+    },
+
+    setError: function(payload) {
+        this.error = payload.error;
+        this.fetching = false;
         this.emit('change');
     },
 
     // Expose our state via this method (for read only protection)
     getState: function() {
         return compose(
-            pick(['raw', 'fetching'])
+            pick(['raw', 'fetching', 'error'])
         )(this);
     }
 });
@@ -584,11 +573,17 @@ var RepoStore = Fluxxor.createStore({
 var actions = {
     fetch: function(username, repoName) {
         this.dispatch('REPO:FETCH');
+
         superagent
             .get('/api/repo/' + username + '/' + repoName)
             .end(function(res) {
-                if (!res.ok) { return; }
-                this.dispatch('REPO:RESET', {data: res.body});
+                if(!res.body) {
+                    this.dispatch('REPO:ERROR', {error: 'No repo found'});
+                } else if (require('lodash').isString(res.body)) {
+                    this.dispatch('REPO:ERROR', {error: res.body});
+                } else {
+                    this.dispatch('REPO:RESET', {data: res.body});
+                }
             }.bind(this));
     }
 };
@@ -602,7 +597,7 @@ module.exports = {
     actions: {repo: actions}
 };
 
-},{"fluxxor":16,"ramda":74,"superagent":235}],9:[function(require,module,exports){
+},{"fluxxor":16,"lodash":73,"ramda":74,"superagent":235}],9:[function(require,module,exports){
 var _ = require('lodash');
 var Fluxxor = require('fluxxor');
 
@@ -11280,7 +11275,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],74:[function(require,module,exports){
 //     ramda.js
-//     "version": "0.4.0"
+//     "version": "0.4.2"
 //     https://github.com/CrossEye/ramda
 //     (c) 2013-2014 Scott Sauyet and Michael Hurley
 //     Ramda may be freely distributed under the MIT license.
@@ -11297,15 +11292,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 //
 //  [umd]: https://github.com/umdjs/umd/blob/master/returnExports.js
 
-(function (factory) {
+(function(factory) {
     if (typeof exports === 'object') {
         module.exports = factory(this);
     } else if (typeof define === 'function' && define.amd) {
         define(factory);
     } else {
-        this.ramda = factory(this);
+        this.R = this.ramda = factory(this);
     }
-}(function (global) {
+}(function(global) {
 
     'use strict';
 
@@ -11340,16 +11335,17 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      firstThreeArgs(1, 2, 3, 4); //=> [1, 2, 3]
      */
     function _slice(args, from, to) {
-        from = (typeof from === 'number') ? from : 0;
-        to = (typeof to === 'number') ? to : args.length;
-        var length = to - from,
-            arr = new Array(length),
-            i = -1;
-
-        while (++i < length) {
-            arr[i] = args[from + i];
+        switch (arguments.length) {
+            case 0: throw NO_ARGS_EXCEPTION;
+            case 1: return _slice(args, 0);
+            case 2: return _slice(args, from, args.length);
+            default:
+                var length = to - from, arr = new Array(length), i = -1;
+                while (++i < length) {
+                    arr[i] = args[from + i];
+                }
+                return arr;
         }
-        return arr;
     }
 
 
@@ -11439,9 +11435,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * Optionally, you may provide an arity for the returned function.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (* -> a) -> Number -> (* -> a)
+     * @sig (* -> a) -> (* -> a)
      * @param {Function} fn The function to curry.
      * @param {number} [fnArity=fn.length] An optional arity for the returned function.
      * @return {Function} A new, curried function.
@@ -11457,21 +11455,20 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      g(4);//=> 10
      */
     var curry = R.curry = function _curry(fn, fnArity) {
-        fnArity = typeof fnArity === 'number' ? fnArity : fn.length;
-        function recurry(args) {
-            return arity(Math.max(fnArity - (args && args.length || 0), 0), function () {
+        if (arguments.length < 2) {
+            return _curry(fn, fn.length);
+        }
+        return (function recurry(args) {
+            return arity(Math.max(fnArity - (args && args.length || 0), 0), function() {
                 if (arguments.length === 0) { throw NO_ARGS_EXCEPTION; }
                 var newArgs = concat(args, arguments);
                 if (newArgs.length >= fnArity) {
                     return fn.apply(this, newArgs);
-                }
-                else {
+                } else {
                     return recurry(newArgs);
                 }
             });
-        }
-
-        return recurry([]);
+        }([]));
     };
 
 
@@ -11496,11 +11493,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     function curry2(fn) {
         return function(a, b) {
             switch (arguments.length) {
-                case 0: throw NO_ARGS_EXCEPTION;
-                case 1: return function(b) {
+                case 0:
+                    throw NO_ARGS_EXCEPTION;
+                case 1:
+                    return function(b) {
+                        return fn(a, b);
+                    };
+                default:
                     return fn(a, b);
-                };
-                default: return fn(a, b);
             }
         };
     }
@@ -11524,14 +11524,18 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     function curry3(fn) {
         return function(a, b, c) {
             switch (arguments.length) {
-                case 0: throw NO_ARGS_EXCEPTION;
-                case 1: return curry2(function(b, c) {
+                case 0:
+                    throw NO_ARGS_EXCEPTION;
+                case 1:
+                    return curry2(function(b, c) {
+                        return fn(a, b, c);
+                    });
+                case 2:
+                    return function(c) {
+                        return fn(a, b, c);
+                    };
+                default:
                     return fn(a, b, c);
-                });
-                case 2: return function(c) {
-                    return fn(a, b, c);
-                };
-                default: return fn(a, b, c);
             }
         };
     }
@@ -11581,7 +11585,6 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
                 case 1: return callBound ? obj[methodname]() : func(a);
                 case 2: return callBound ? obj[methodname](a) : func(a, b);
                 case 3: return callBound ? obj[methodname](a, b) : func(a, b, c);
-                case 4: return callBound ? obj[methodname](a, b, c) : func(a, b, c, obj);
             }
         };
     }
@@ -11613,9 +11616,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Wraps a function of any arity (including nullary) in a function that accepts exactly `n`
      * parameters. Any extraneous parameters will not be passed to the supplied function.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig Number -> (* -> a) -> (* -> a)
      * @param {number} n The desired arity of the new function.
      * @param {Function} fn The function to wrap.
      * @return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
@@ -11628,30 +11632,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      takesTwoArgs.length; //=> 2
      *      takesTwoArgs(1, 2); //=> [1, 2]
      *
-     *      var takesOneArg = ramda.nAry(1, takesTwoArgs);
+     *      var takesOneArg = R.nAry(1, takesTwoArgs);
      *      takesOneArg.length; //=> 1
      *      // Only `n` arguments are passed to the wrapped function
      *      takesOneArg(1, 2); //=> [1, undefined]
      */
-    var nAry = R.nAry = (function () {
+    var nAry = R.nAry = (function() {
         var cache = {
-            0: function (func) {
-                return function () {
+            0: function(func) {
+                return function() {
                     return func.call(this);
                 };
             },
-            1: function (func) {
-                return function (arg0) {
+            1: function(func) {
+                return function(arg0) {
                     return func.call(this, arg0);
                 };
             },
-            2: function (func) {
-                return function (arg0, arg1) {
+            2: function(func) {
+                return function(arg0, arg1) {
                     return func.call(this, arg0, arg1);
                 };
             },
-            3: function (func) {
-                return function (arg0, arg1, arg2) {
+            3: function(func) {
+                return function(arg0, arg1, arg2) {
                     return func.call(this, arg0, arg1, arg2);
                 };
             }
@@ -11665,11 +11669,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         //         }
         //     };
 
-        var makeN = function (n) {
+        var makeN = function(n) {
             var fnArgs = mkArgStr(n);
             var body = [
-                    '    return function(' + fnArgs + ') {',
-                    '        return func.call(this' + (fnArgs ? ', ' + fnArgs : '') + ');',
+                '    return function(' + fnArgs + ') {',
+                '        return func.call(this' + (fnArgs ? ', ' + fnArgs : '') + ');',
                 '    }'
             ].join('\n');
             return new Function('func', body);
@@ -11685,9 +11689,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Wraps a function of any arity (including nullary) in a function that accepts exactly 1
      * parameter. Any extraneous parameters will not be passed to the supplied function.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (* -> b) -> (a -> b)
      * @param {Function} fn The function to wrap.
      * @return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
      *         arity 1.
@@ -11699,7 +11704,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      takesTwoArgs.length; //=> 2
      *      takesTwoArgs(1, 2); //=> [1, 2]
      *
-     *      var takesOneArg = ramda.unary(1, takesTwoArgs);
+     *      var takesOneArg = R.unary(1, takesTwoArgs);
      *      takesOneArg.length; //=> 1
      *      // Only 1 argument is passed to the wrapped function
      *      takesOneArg(1, 2); //=> [1, undefined]
@@ -11713,9 +11718,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Wraps a function of any arity (including nullary) in a function that accepts exactly 2
      * parameters. Any extraneous parameters will not be passed to the supplied function.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (* -> c) -> (a, b -> c)
      * @param {Function} fn The function to wrap.
      * @return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
      *         arity 2.
@@ -11727,7 +11733,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      takesThreeArgs.length; //=> 3
      *      takesThreeArgs(1, 2, 3); //=> [1, 2, 3]
      *
-     *      var takesTwoArgs = ramda.binary(1, takesThreeArgs);
+     *      var takesTwoArgs = R.binary(1, takesThreeArgs);
      *      takesTwoArgs.length; //=> 2
      *      // Only 2 arguments are passed to the wrapped function
      *      takesTwoArgs(1, 2, 3); //=> [1, 2, undefined]
@@ -11742,8 +11748,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * parameters. Unlike `nAry`, which passes only `n` arguments to the wrapped function,
      * functions produced by `arity` will pass all provided arguments to the wrapped function.
      *
-     * @static
+     * @func
      * @memberOf R
+     * @sig (Number, (* -> *)) -> (* -> *)
      * @category Function
      * @param {number} n The desired arity of the returned function.
      * @param {Function} fn The function to wrap.
@@ -11757,30 +11764,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      takesTwoArgs.length; //=> 2
      *      takesTwoArgs(1, 2); //=> [1, 2]
      *
-     *      var takesOneArg = ramda.unary(1, takesTwoArgs);
+     *      var takesOneArg = R.unary(1, takesTwoArgs);
      *      takesOneArg.length; //=> 1
      *      // All arguments are passed through to the wrapped function
      *      takesOneArg(1, 2); //=> [1, 2]
      */
-    var arity = R.arity = (function () {
+    var arity = R.arity = (function() {
         var cache = {
-            0: function (func) {
-                return function () {
+            0: function(func) {
+                return function() {
                     return func.apply(this, arguments);
                 };
             },
-            1: function (func) {
-                return function (arg0) {
+            1: function(func) {
+                return function(arg0) {
                     return func.apply(this, arguments);
                 };
             },
-            2: function (func) {
-                return function (arg0, arg1) {
+            2: function(func) {
+                return function(arg0, arg1) {
                     return func.apply(this, arguments);
                 };
             },
-            3: function (func) {
-                return function (arg0, arg1, arg2) {
+            3: function(func) {
+                return function(arg0, arg1, arg2) {
                     return func.apply(this, arguments);
                 };
             }
@@ -11793,10 +11800,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         //         }
         //     };
 
-        var makeN = function (n) {
+        var makeN = function(n) {
             var fnArgs = mkArgStr(n);
             var body = [
-                    '    return function(' + fnArgs + ') {',
+                '    return function(' + fnArgs + ') {',
                 '        return func.apply(this, arguments);',
                 '    }'
             ].join('\n');
@@ -11817,27 +11824,28 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * The returned function is curried and accepts `len + 1` parameters (or `method.length + 1`
      * when `len` is not specified), and the final parameter is the target object.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (String, Object, Number) -> (* -> *)
      * @param {string} name The name of the method to wrap.
      * @param {Object} obj The object to search for the `name` method.
      * @param [len] The desired arity of the wrapped method.
      * @return {Function} A new function or `undefined` if the specified method is not found.
      * @example
      *
-     *      var charAt = ramda.invoker('charAt', String.prototype);
+     *      var charAt = R.invoker('charAt', String.prototype);
      *      charAt(6, 'abcdefghijklm'); //=> 'g'
      *
-     *      var join = ramda.invoker('join', Array.prototype);
+     *      var join = R.invoker('join', Array.prototype);
      *      var firstChar = charAt(0);
-     *      join('', ramda.map(firstChar, ['light', 'ampliifed', 'stimulated', 'emission', 'radiation']));
+     *      join('', R.map(firstChar, ['light', 'ampliifed', 'stimulated', 'emission', 'radiation']));
      *      //=> 'laser'
      */
     var invoker = R.invoker = function _invoker(name, obj, len) {
         var method = obj[name];
         var length = len === void 0 ? method.length : len;
-        return method && curry(function () {
+        return method && curry(function() {
             if (arguments.length) {
                 var target = Array.prototype.pop.call(arguments);
                 var targetMethod = target[name];
@@ -11856,7 +11864,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * new function. For example:
      *
      * ```javascript
-     *   var useWithExample = invoke(someFn, transformerFn1, transformerFn2);
+     *   var useWithExample = R.useWith(someFn, transformerFn1, transformerFn2);
      *
      *   // This invocation:
      *   useWithExample('x', 'y');
@@ -11869,13 +11877,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * arguments that don't need to be transformed, although you can ignore them, it's best to
      * pass an identity function so that the new function reports the correct arity.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig ((* -> *), (* -> *)...) -> (* -> *)
      * @param {Function} fn The function to wrap.
      * @param {...Function} transformers A variable number of transformer functions
      * @return {Function} The wrapped function.
-     * @alias disperseTo
      * @example
      *
      *      var double = function(y) { return y * 2; };
@@ -11883,11 +11891,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var add = function(a, b) { return a + b; };
      *      // Adds any number of arguments together
      *      var addAll = function() {
-     *        return ramda.reduce(add, 0, arguments);
+     *        return R.reduce(add, 0, arguments);
      *      };
      *
      *      // Basic example
-     *      var addDoubleAndSquare = ramda.useWith(addAll, double, square);
+     *      var addDoubleAndSquare = R.useWith(addAll, double, square);
      *
      *      addDoubleAndSquare(10, 5); //≅ addAll(double(10), square(5));
      *      //=> 125
@@ -11898,14 +11906,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      *      // But if you're expecting additional arguments that don't need transformation, it's best
      *      // to pass transformer functions so the resulting function has the correct arity
-     *      var addDoubleAndSquareWithExtraParams = ramda.useWith(addAll, double, square, ramda.identity);
-     *      addDoubleAndSquare(10, 5, 100); //≅ addAll(double(10), square(5), ramda.identity(100));
+     *      var addDoubleAndSquareWithExtraParams = R.useWith(addAll, double, square, R.identity);
+     *      addDoubleAndSquare(10, 5, 100); //≅ addAll(double(10), square(5), R.identity(100));
      *      //=> 225
      */
     var useWith = R.useWith = function _useWith(fn /*, transformers */) {
         var transformers = _slice(arguments, 1);
         var tlen = transformers.length;
-        return curry(arity(tlen, function () {
+        return curry(arity(tlen, function() {
             var args = [], idx = -1;
             while (++idx < tlen) {
                 args.push(transformers[idx](arguments[idx]));
@@ -11913,7 +11921,6 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
             return fn.apply(this, args.concat(_slice(arguments, tlen)));
         }));
     };
-    R.disperseTo = R.useWith;
 
 
     /**
@@ -11922,29 +11929,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * `fn` receives one argument: *(value)*.
      *
-     * Note: `ramda.each` does not skip deleted or unassigned indices (sparse arrays), unlike
+     * Note: `R.forEach` does not skip deleted or unassigned indices (sparse arrays), unlike
      * the native `Array.prototype.forEach` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
      *
-     * Also note that, unlike `Array.prototype.forEach`, Ramda's `each` returns the original
-     * array.
+     * Also note that, unlike `Array.prototype.forEach`, Ramda's `forEach` returns the original
+     * array. In some libraries this function is named `each`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> *) -> [a] -> [a]
      * @param {Function} fn The function to invoke. Receives one argument, `value`.
      * @param {Array} list The list to iterate over.
      * @return {Array} The original list.
      * @example
      *
-     *      ramda.each(function(num) {
+     *      R.forEach(function(num) {
      *        console.log(num + 100);
      *      }, [1, 2, 3]); //=> [1, 2, 3]
      *      //-> 101
      *      //-> 102
      *      //-> 103
      */
-    function each(fn, list) {
+    function forEach(fn, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
             fn(list[idx]);
@@ -11952,39 +11960,40 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         // i can't bear not to return *something*
         return list;
     }
-    R.each = curry2(each);
+    R.forEach = curry2(forEach);
 
 
     /**
-     * Like `each`, but but passes additional parameters to the predicate function.
+     * Like `forEach`, but but passes additional parameters to the predicate function.
      *
      * `fn` receives three arguments: *(value, index, list)*.
      *
-     * Note: `ramda.each.idx` does not skip deleted or unassigned indices (sparse arrays),
+     * Note: `R.forEach.idx` does not skip deleted or unassigned indices (sparse arrays),
      * unlike the native `Array.prototype.forEach` method. For more details on this behavior,
      * see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
      *
-     * Also note that, unlike `Array.prototype.forEach`, Ramda's `each` returns the original
-     * array.
+     * Also note that, unlike `Array.prototype.forEach`, Ramda's `forEach` returns the original
+     * array. In some libraries this function is named `each`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a, i, [a] -> ) -> [a] -> [a]
      * @param {Function} fn The function to invoke. Receives three arguments:
      *        (`value`, `index`, `list`).
      * @param {Array} list The list to iterate over.
      * @return {Array} The original list.
-     * @alias forEach
+     * @alias forEach.idx
      * @example
      *
      *      // Note that having access to the original `list` allows for
      *      // mutation. While you *can* do this, it's very un-functional behavior:
-     *      ramda.each.idx(function(num, idx, list) {
+     *      R.forEach.idx(function(num, idx, list) {
      *        list[idx] = num + 100;
      *      }, [1, 2, 3]); //=> [101, 102, 103]
      */
-    R.each.idx = curry2(function eachIdx(fn, list) {
+    R.forEach.idx = curry2(function forEachIdx(fn, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
             fn(list[idx], idx, list);
@@ -11992,26 +12001,26 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         // i can't bear not to return *something*
         return list;
     });
-    R.forEach = R.each;
 
 
     /**
      * Creates a shallow copy of an array.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig [a] -> [a]
      * @param {Array} list The list to clone.
      * @return {Array} A new copy of the original list.
      * @example
      *
      *      var numbers = [1, 2, 3];
-     *      var numbersClone = ramda.clone(numbers); //=> [1, 2, 3]
+     *      var numbersClone = R.clone(numbers); //=> [1, 2, 3]
      *      numbers === numbersClone; //=> false
      *
      *      // Note that this is a shallow clone--it does not clone complex values:
      *      var objects = [{}, {}, {}];
-     *      var objectsClone = ramda.clone(objects);
+     *      var objectsClone = R.clone(objects);
      *      objects[0] === objectsClone[0]; //=> true
      */
     var clone = R.clone = function _clone(list) {
@@ -12026,18 +12035,19 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Reports whether an array is empty.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig [a] -> Boolean
      * @param {Array} arr The array to consider.
      * @return {boolean} `true` if the `arr` argument has a length of 0 or
      *         if `arr` is a falsy value (e.g. undefined).
      * @example
      *
-     *      ramda.isEmpty([1, 2, 3]); //=> false
-     *      ramda.isEmpty([]); //=> true
-     *      ramda.isEmpty(); //=> true
-     *      ramda.isEmpty(null); //=> true
+     *      R.isEmpty([1, 2, 3]); //=> false
+     *      R.isEmpty([]); //=> true
+     *      R.isEmpty(); //=> true
+     *      R.isEmpty(null); //=> true
      */
     function isEmpty(arr) {
         return !arr || !arr.length;
@@ -12049,57 +12059,70 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list with the given element at the front, followed by the contents of the
      * list.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig a -> [a] -> [a]
      * @param {*} el The item to add to the head of the output list.
      * @param {Array} arr The array to add to the tail of the output list.
      * @return {Array} A new array.
-     * @alias cons
      * @example
      *
-     *      ramda.prepend('fee', ['fi', 'fo', 'fum']); //=> ['fee', 'fi', 'fo', 'fum']
+     *      R.prepend('fee', ['fi', 'fo', 'fum']); //=> ['fee', 'fi', 'fo', 'fum']
      */
-    function prepend(el, arr) {
+    R.prepend = function prepend(el, arr) {
         return concat([el], arr);
-    }
-    R.prepend = prepend;
+    };
+
+    /**
+     * @func
+     * @memberOf R
+     * @category Array
+     * @see R.prepend
+     */
     R.cons = R.prepend;
 
 
     /**
      * Returns the first element in a list.
+     * In some libraries this function is named `first`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig [a] -> a
      * @param {Array} [arr=[]] The array to consider.
      * @return {*} The first element of the list, or `undefined` if the list is empty.
-     * @alias car
-     * @alias first
      * @example
      *
-     *      ramda.head(['fi', 'fo', 'fum']); //=> 'fi'
+     *      R.head(['fi', 'fo', 'fum']); //=> 'fi'
      */
-    var head = R.head = function _car(arr) {
+    var head = R.head = function head(arr) {
         arr = arr || [];
         return arr[0];
     };
 
-    R.car = R.first = R.head;
+    /**
+     * @func
+     * @memberOf R
+     * @category Array
+     * @see R.head
+     */
+    R.car = R.head;
 
 
     /**
      * Returns the last element from a list.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig [a] -> a
      * @param {Array} [arr=[]] The array to consider.
      * @return {*} The last element of the list, or `undefined` if the list is empty.
      * @example
      *
-     *      ramda.last(['fi', 'fo', 'fum']); //=> 'fum'
+     *      R.last(['fi', 'fo', 'fum']); //=> 'fum'
      */
     R.last = function _last(arr) {
         arr = arr || [];
@@ -12111,22 +12134,28 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns all but the first element of a list. If the list provided has the `tail` method,
      * it will instead return `list.tail()`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig [a] -> [a]
      * @param {Array} [arr=[]] The array to consider.
      * @return {Array} A new array containing all but the first element of the input list, or an
      *         empty list if the input list is a falsy value (e.g. `undefined`).
-     * @alias cdr
      * @example
      *
-     *      ramda.tail(['fi', 'fo', 'fum']); //=> ['fo', 'fum']
+     *      R.tail(['fi', 'fo', 'fum']); //=> ['fo', 'fum']
      */
     var tail = R.tail = checkForMethod('tail', function(arr) {
         arr = arr || [];
         return (arr.length > 1) ? _slice(arr, 1) : [];
     });
 
+    /**
+     * @func
+     * @memberOf R
+     * @category Array
+     * @see R.tail
+     */
     R.cdr = R.tail;
 
 
@@ -12134,21 +12163,22 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns `true` if the argument is an atom; `false` otherwise. An atom is defined as any
      * value that is not an array, `undefined`, or `null`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig a -> Boolean
      * @param {*} x The element to consider.
      * @return {boolean} `true` if `x` is an atom, and `false` otherwise.
      * @example
      *
-     *      ramda.isAtom([]); //=> false
-     *      ramda.isAtom(null); //=> false
-     *      ramda.isAtom(undefined); //=> false
+     *      R.isAtom([]); //=> false
+     *      R.isAtom(null); //=> false
+     *      R.isAtom(undefined); //=> false
      *
-     *      ramda.isAtom(0); //=> true
-     *      ramda.isAtom(''); //=> true
-     *      ramda.isAtom('test'); //=> true
-     *      ramda.isAtom({}); //=> true
+     *      R.isAtom(0); //=> true
+     *      R.isAtom(''); //=> true
+     *      R.isAtom('test'); //=> true
+     *      R.isAtom({}); //=> true
      */
     R.isAtom = function _isAtom(x) {
         return x != null && !isArray(x);
@@ -12159,24 +12189,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list containing the contents of the given list, followed by the given
      * element.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig a -> [a] -> [a]
      * @param {*} el The element to add to the end of the new list.
      * @param {Array} list The list whose contents will be added to the beginning of the output
      *        list.
      * @return {Array} A new list containing the contents of the old list followed by `el`.
-     * @alias push
      * @example
      *
-     *      ramda.append('tests', ['write', 'more']); //=> ['write', 'more', 'tests']
-     *      ramda.append('tests', []); //=> ['tests']
-     *      ramda.append(['tests'], ['write', 'more']); //=> ['write', 'more', ['tests']]
+     *      R.append('tests', ['write', 'more']); //=> ['write', 'more', 'tests']
+     *      R.append('tests', []); //=> ['tests']
+     *      R.append(['tests'], ['write', 'more']); //=> ['write', 'more', ['tests']]
      */
     var append = R.append = function _append(el, list) {
         return concat(list, [el]);
     };
 
+    /**
+     * @func
+     * @memberOf R
+     * @category Array
+     * @see R.append
+     */
     R.push = R.append;
 
 
@@ -12184,9 +12220,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list consisting of the elements of the first list followed by the elements
      * of the second.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig [a] -> [a] -> [a]
      * @param {Array} list1 The first list to merge.
      * @param {Array} list2 The second set to merge.
      * @return {Array} A new array consisting of the contents of `list1` followed by the
@@ -12195,15 +12232,20 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *         and it the value of `list2`.
      * @example
      *
-     *      ramda.concat([], []); //=> []
-     *      ramda.concat([4, 5, 6], [1, 2, 3]); //=> [4, 5, 6, 1, 2, 3]
-     *      ramda.concat('ABC', 'DEF'); // 'ABCDEF'
+     *      R.concat([], []); //=> []
+     *      R.concat([4, 5, 6], [1, 2, 3]); //=> [4, 5, 6, 1, 2, 3]
+     *      R.concat('ABC', 'DEF'); // 'ABCDEF'
      */
     R.concat = curry2(function(set1, set2) {
-        if (isArray(set2)) { return concat(set1, set2); }
-        else if (R.is(String, set1)) { return set1.concat(set2); }
-        else if (hasMethod('concat', set2)) { return set2.concat(set1); }
-        else { throw new TypeError("can't concat " + typeof set2); }
+        if (isArray(set2)) {
+            return concat(set1, set2);
+        } else if (R.is(String, set1)) {
+            return set1.concat(set2);
+        } else if (hasMethod('concat', set2)) {
+            return set2.concat(set1);
+        } else {
+            throw new TypeError("can't concat " + typeof set2);
+        }
     });
 
 
@@ -12211,22 +12253,29 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * A function that does nothing but return the parameter supplied to it. Good as a default
      * or placeholder function.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Core
+     * @sig a -> a
      * @param {*} x The value to return.
      * @return {*} The input value, `x`.
-     * @alias I
      * @example
      *
-     *      ramda.identity(1); //=> 1
+     *      R.identity(1); //=> 1
      *
      *      var obj = {};
-     *      ramda.identity(obj) === obj; //=> true
+     *      R.identity(obj) === obj; //=> true
      */
     var identity = R.identity = function _I(x) {
         return x;
     };
+
+    /**
+     * @func
+     * @memberOf R
+     * @category Core
+     * @see R.identity
+     */
     R.I = R.identity;
 
 
@@ -12237,15 +12286,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `fn` is passed one argument: The current value of `n`, which begins at `0` and is
      * gradually incremented to `n - 1`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (i -> a) -> i -> [a]
      * @param {Function} fn The function to invoke. Passed one argument, the current value of `n`.
      * @param {number} n A value between `0` and `n - 1`. Increments after each function call.
      * @return {Array} An array containing the return values of all calls to `fn`.
      * @example
      *
-     *      ramda.times(function(n) { return n; }, 5); //=> [0, 1, 2, 3, 4]
+     *      R.times(function(n) { return n; }, 5); //=> [0, 1, 2, 3, 4]
      */
     R.times = curry2(function _times(fn, n) {
         var arr = new Array(n);
@@ -12260,18 +12310,19 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a fixed list of size `n` containing a specified identical value.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Array
+     * @sig a -> n -> [a]
      * @param {*} value The value to repeat.
      * @param {number} n The desired size of the output list.
      * @return {Array} A new array containing `n` `value`s.
      * @example
      *
-     *      ramda.repeatN('hi', 5); //=> ['hi', 'hi', 'hi', 'hi', 'hi']
+     *      R.repeatN('hi', 5); //=> ['hi', 'hi', 'hi', 'hi', 'hi']
      *
      *      var obj = {};
-     *      var repeatedObjs = ramda.repeatN(obj, 5); //=> [{}, {}, {}, {}, {}]
+     *      var repeatedObjs = R.repeatN(obj, 5); //=> [{}, {}, {}, {}, {}]
      *      repeatedObjs[0] === repeatedObjs[1]; //=> true
      */
     R.repeatN = curry2(function _repeatN(value, n) {
@@ -12286,35 +12337,6 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     // These functions make new functions out of old ones.
 
     // --------
-
-    /**
-     * Returns a new function which partially applies a value to a given function, where the
-     * function is a variadic function that cannot be curried.
-     *
-     * @private
-     * @category Function
-     * @param {Function} f The function to partially apply `a` onto.
-     * @param {*} a The argument to partially apply onto `f`.
-     * @return {Function} A new function.
-     * @example
-     *
-     *      var addThree = function(a, b, c) {
-     *        return a + b + c;
-     *      };
-     *      var partialAdd = partially(add, 1);
-     *      partialAdd(2, 3); //=> 6
-     *
-     *      // partialAdd is invoked immediately, even though it expects three arguments. This is
-     *      // because, unlike many functions here, the result of `partially` is not a curried
-     *      // function.
-     *      partialAdd(2); //≅ addThree(1, 2, undefined) => NaN
-     */
-    function partially(f, a) {
-        return function() {
-            return f.apply(this, concat([a], arguments));
-        };
-    }
-
 
     /**
      * Basic, right-associative composition function. Accepts two functions and returns the
@@ -12355,9 +12377,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * the function `h` is equivalent to `f( g(x) )`, where `x` represents the arguments
      * originally passed to `h`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig ((y -> z), (x -> y), ..., (b -> c), (a... -> b)) -> (a... -> z)
      * @param {...Function} functions A variable number of functions.
      * @return {Function} A new function which represents the result of calling each of the
      *         input `functions`, passing the result of each function call to the next, from
@@ -12367,7 +12390,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var triple = function(x) { return x * 3; };
      *      var double = function(x) { return x * 2; };
      *      var square = function(x) { return x * x; };
-     *      var squareThenDoubleThenTriple = ramda.compose(triple, double, square);
+     *      var squareThenDoubleThenTriple = R.compose(triple, double, square);
      *
      *      squareThenDoubleThenTriple(5); //≅ triple(double(square(5))) => 150
      */
@@ -12393,20 +12416,21 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `pipe` is the mirror version of `compose`. `pipe` is left-associative, which means that
      * each of the functions provided is executed in order from left to right.
      *
-     * @static
+     * In some libraries this function is named `sequence`.
+     * @func
      * @memberOf R
      * @category Function
+     * @sig ((a... -> b), (b -> c), ..., (x -> y), (y -> z)) -> (a... -> z)
      * @param {...Function} functions A variable number of functions.
      * @return {Function} A new function which represents the result of calling each of the
      *         input `functions`, passing the result of each function call to the next, from
      *         right to left.
-     * @alias sequence
      * @example
      *
      *      var triple = function(x) { return x * 3; };
      *      var double = function(x) { return x * 2; };
      *      var square = function(x) { return x * x; };
-     *      var squareThenDoubleThenTriple = ramda.pipe(square, double, triple);
+     *      var squareThenDoubleThenTriple = R.pipe(square, double, triple);
      *
      *      squareThenDoubleThenTriple(5); //≅ triple(double(square(5))) => 150
      */
@@ -12414,16 +12438,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         return compose.apply(this, _slice(arguments).reverse());
     };
 
-    R.sequence = R.pipe;
-
 
     /**
      * Returns a new function much like the supplied one, except that the first two arguments'
      * order is reversed.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (a -> b -> c -> ... -> z) -> (b -> a -> c -> ... -> z)
      * @param {Function} fn The function to invoke with its first two parameters reversed.
      * @return {*} The result of invoking `fn` with its first two parameters' order reversed.
      * @example
@@ -12435,10 +12458,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      *      mergeThree(numbers); //=> [1, 2, 3]
      *
-     *      ramda.flip([1, 2, 3]); //=> [2, 1, 3]
+     *      R.flip([1, 2, 3]); //=> [2, 1, 3]
      */
     var flip = R.flip = function _flip(fn) {
-        return function (a, b) {
+        return function(a, b) {
             switch (arguments.length) {
                 case 0: throw NO_ARGS_EXCEPTION;
                 case 1: return function(b) { return fn.apply(this, [b, a].concat(_slice(arguments, 1))); };
@@ -12451,37 +12474,35 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Accepts as its arguments a function and any number of values and returns a function that,
      * when invoked, calls the original function with all of the values prepended to the
-     * original function's arguments list.
+     * original function's arguments list. In some libraries this function is named `applyLeft`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (a -> b -> ... -> i -> j -> ... -> m -> n) -> a -> b-> ... -> i -> (j -> ... -> m -> n)
      * @param {Function} fn The function to invoke.
      * @param {...*} [args] Arguments to prepend to `fn` when the returned function is invoked.
      * @return {Function} A new function wrapping `fn`. When invoked, it will call `fn`
      *         with `args` prepended to `fn`'s arguments list.
-     * @alias applyLeft
      * @example
      *
      *      var multiply = function(a, b) { return a * b; };
-     *      var double = ramda.lPartial(multiply, 2);
+     *      var double = R.lPartial(multiply, 2);
      *      double(2); //=> 4
      *
      *      var greet = function(salutation, title, firstName, lastName) {
      *        return salutation + ', ' + title + ' ' + firstName + ' ' + lastName + '!';
      *      };
-     *      var sayHello = ramda.lPartial(greet, 'Hello');
-     *      var sayHelloToMs = ramda.lPartial(sayHello, 'Ms.');
+     *      var sayHello = R.lPartial(greet, 'Hello');
+     *      var sayHelloToMs = R.lPartial(sayHello, 'Ms.');
      *      sayHelloToMs('Jane', 'Jones'); //=> 'Hello, Ms. Jane Jones!'
      */
     R.lPartial = function _lPartial(fn /*, args */) {
         var args = _slice(arguments, 1);
-        return arity(Math.max(fn.length - args.length, 0), function () {
+        return arity(Math.max(fn.length - args.length, 0), function() {
             return fn.apply(this, concat(args, arguments));
         });
     };
-
-    R.applyLeft = R.lPartial;
 
 
     /**
@@ -12490,22 +12511,22 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * function's arguments list.
      *
      * Note that `rPartial` is the opposite of `lPartial`: `rPartial` fills `fn`'s arguments
-     * from the right to the left.
+     * from the right to the left.  In some libraries this function is named `applyRight`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (a -> b-> ... -> i -> j -> ... -> m -> n) -> j -> ... -> m -> n -> (a -> b-> ... -> i)
      * @param {Function} fn The function to invoke.
      * @param {...*} [args] Arguments to append to `fn` when the returned function is invoked.
      * @return {Function} A new function wrapping `fn`. When invoked, it will call `fn` with
      *         `args` appended to `fn`'s arguments list.
-     * @alias applyRight
      * @example
      *
      *      var greet = function(salutation, title, firstName, lastName) {
      *        return salutation + ', ' + title + ' ' + firstName + ' ' + lastName + '!';
      *      };
-     *      var greetMsJaneJones = ramda.rPartial(greet, 'Ms.', 'Jane', 'Jones');
+     *      var greetMsJaneJones = R.rPartial(greet, 'Ms.', 'Jane', 'Jones');
      *
      *      greetMsJaneJones('Hello'); //=> 'Hello, Ms. Jane Jones!'
      */
@@ -12515,8 +12536,6 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
             return fn.apply(this, concat(arguments, args));
         });
     };
-
-    R.applyRight = R.rPartial;
 
 
     /**
@@ -12528,9 +12547,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that this version of `memoize` effectively handles only string and number
      * parameters.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (a... -> b) -> (a... -> b)
      * @param {Function} fn The function to be wrapped by `memoize`.
      * @return {Function}  Returns a memoized version of `fn`.
      * @example
@@ -12540,7 +12560,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        numberOfCalls += 1;
      *        return a + b;
      *      };
-     *      var memoTrackedAdd = ramda.memoize(trackedAdd);
+     *      var memoTrackedAdd = R.memoize(trackedAdd);
      *
      *      memoAdd(1, 2); //=> 3 (numberOfCalls => 1)
      *      memoAdd(1, 2); //=> 3 (numberOfCalls => 1)
@@ -12551,8 +12571,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.memoize = function _memoize(fn) {
         var cache = {};
-        return function () {
-            var position = foldl(function (cache, arg) {
+        return function() {
+            var position = foldl(function(cache, arg) {
                     return cache[arg] || (cache[arg] = {});
                 }, cache,
                 _slice(arguments, 0, arguments.length - 1));
@@ -12567,21 +12587,22 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `fn` can only ever be called once, no matter how many times the returned function is
      * invoked.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (a... -> b) -> (a... -> b)
      * @param {Function} fn The function to wrap in a call-only-once wrapper.
      * @return {Function} The wrapped function.
      * @example
      *
-     *      var alertOnce = ramda.once(alert);
+     *      var alertOnce = R.once(alert);
      *      alertOnce('Hello!'); // Alerts 'Hello!'
      *      alertOnce('Nothing'); // Doesn't alert
      *      alertOnce('Again'); // Doesn't alert
      */
     R.once = function _once(fn) {
         var called = false, result;
-        return function () {
+        return function() {
             if (called) {
                 return result;
             }
@@ -12596,9 +12617,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Wrap a function inside another to allow you to make adjustments to the parameters, or do
      * other processing either before the internal function is called or with its results.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * ((* -> *) -> ((* -> *), a...) -> (*, a... -> *)
      * @param {Function} fn The function to wrap.
      * @param {Function} wrapper The wrapper function.
      * @return {Function} The wrapped function.
@@ -12625,9 +12647,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * NOTE: Does not work with some built-in objects such as Date.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig Number -> (* -> {*}) -> (* -> {*})
      * @param {number} n The arity of the constructor function.
      * @param {Function} Fn The constructor function to wrap.
      * @return {Function} A wrapped, curried constructor function.
@@ -12644,7 +12667,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      map(constructN(1, Widget), allConfigs); //=> a list of Widgets
      */
     var constructN = R.constructN = function _constructN(n, Fn) {
-        var f = function () {
+        var f = function() {
             var Temp = function() {}, inst, ret;
             Temp.prototype = Fn.prototype;
             inst = new Temp();
@@ -12661,9 +12684,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * NOTE: Does not work with some built-in objects such as Date.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig (* -> {*}) -> (* -> {*})
      * @param {Function} Fn The constructor function to wrap.
      * @return {Function} A wrapped, curried constructor function.
      * @example
@@ -12687,16 +12711,17 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * invoke the first function, `after`, passing as its arguments the results of invoking the
      * second and third functions with whatever arguments are passed to the new function.
      *
-     * For example, a function produced by `fork` is equivalent to:
+     * For example, a function produced by `converge` is equivalent to:
      *
      * ```javascript
-     *   var h = ramda.fork(e, f, g);
+     *   var h = R.converge(e, f, g);
      *   h(1, 2); //≅ e( f(1, 2), g(1, 2) )
      * ```
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig ((a, b -> c) -> (((* -> a), (* -> b), ...) -> c)
      * @param {Function} after A function. `after` will be invoked with the return values of
      *        `fn1` and `fn2` as its arguments.
      * @param {Function} fn1 A function. It will be invoked with the arguments passed to the
@@ -12706,28 +12731,25 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        returned function. Afterward, its resulting value will be passed to `after` as
      *        its second argument.
      * @return {Function} A new function.
-     * @alias distributeTo
      * @example
      *
      *      var add = function(a, b) { return a + b; };
      *      var multiply = function(a, b) { return a * b; };
      *      var subtract = function(a, b) { return a - b; };
      *
-     *      ramda.fork(multiply, add, subtract)(1, 2);
+     *      R.converge(multiply, add, subtract)(1, 2);
      *      //≅ multiply( add(1, 2), subtract(1, 2) );
      *      //=> -3
      */
-    R.fork = function (after) {
+    R.converge = function(after) {
         var fns = _slice(arguments, 1);
-        return function () {
+        return function() {
             var args = arguments;
-            return after.apply(this, map(function (fn) {
+            return after.apply(this, map(function(fn) {
                 return fn.apply(this, args);
             }, fns));
         };
     };
-
-    R.distributeTo = R.fork;
 
 
 
@@ -12754,19 +12776,19 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * The iterator function receives two values: *(acc, value)*
      *
-     * Note: `ramda.reduce` does not skip deleted or unassigned indices (sparse arrays), unlike
+     * Note: `R.reduce` does not skip deleted or unassigned indices (sparse arrays), unlike
      * the native `Array.prototype.reduce` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce#Description
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a,b -> a) -> a -> [b] -> a
      * @param {Function} fn The iterator function. Receives two values, the accumulator and the
      *        current element from the array.
      * @param {*} acc The accumulator value.
      * @param {Array} list The list to iterate over.
      * @return {*} The final, accumulated value.
-     * @alias foldl
      * @example
      *
      *      var numbers = [1, 2, 3];
@@ -12774,9 +12796,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return a + b;
      *      };
      *
-     *      reduce(numbers, add, 10); //=> 16
+     *      reduce(add, 10, numbers); //=> 16
      */
-    var foldl = R.reduce =  curry3(checkForMethod('reduce', function _reduce(fn, acc, list) {
+    R.reduce = curry3(checkForMethod('reduce', function _reduce(fn, acc, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
             acc = fn(acc, list[idx]);
@@ -12784,27 +12806,35 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         return acc;
     }));
 
-    R.foldl = R.reduce;
+    /**
+     * @func
+     * @memberOf R
+     * @category List
+     * @see R.reduce
+     */
+    var foldl = R.foldl = R.reduce;
 
 
     /**
-     * Like `foldl`, but passes additional parameters to the predicate function.
+     * Like `reduce`, but passes additional parameters to the predicate function.
      *
      * The iterator function receives four values: *(acc, value, index, list)*
      *
-     * Note: `ramda.foldl.idx` does not skip deleted or unassigned indices (sparse arrays),
+     * Note: `R.reduce.idx` does not skip deleted or unassigned indices (sparse arrays),
      * unlike the native `Array.prototype.reduce` method. For more details on this behavior,
      * see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce#Description
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a,b,i,[b] -> a) -> a -> [b] -> a
      * @param {Function} fn The iterator function. Receives four values: the accumulator, the
      *        current element from `list`, that element's index, and the entire `list` itself.
      * @param {*} acc The accumulator value.
      * @param {Array} list The list to iterate over.
      * @return {*} The final, accumulated value.
+     * @alias reduce.idx
      * @example
      *
      *      var letters = ['a', 'b', 'c'];
@@ -12812,15 +12842,25 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return accObject[elem] = idx;
      *      };
      *
-     *      foldl.idx(letters, objectify, {}); //=> { 'a': 0, 'b': 1, 'c': 2 }
+     *      reduce.idx(letters, objectify, {}); //=> { 'a': 0, 'b': 1, 'c': 2 }
      */
-    R.foldl.idx = curry3(checkForMethod('foldl', function(fn, acc, list) {
+    R.reduce.idx = curry3(function _reduceIdx(fn, acc, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
             acc = fn(acc, list[idx], idx, list);
         }
         return acc;
-    }));
+    });
+
+
+    /**
+     * @func
+     * @memberOf R
+     * @category List
+     * @alias foldl.idx
+     * @see R.reduce.idx
+     */
+    R.foldl.idx = R.reduce.idx;
 
 
     /**
@@ -12828,23 +12868,23 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * function and passing it an accumulator value and the current value from the array, and
      * then passing the result to the next call.
      *
-     * Similar to `foldl`, except moves through the input list from the right to the left.
+     * Similar to `reduce`, except moves through the input list from the right to the left.
      *
      * The iterator function receives two values: *(acc, value)*
      *
-     * Note: `ramda.foldr` does not skip deleted or unassigned indices (sparse arrays), unlike
+     * Note: `R.reduce` does not skip deleted or unassigned indices (sparse arrays), unlike
      * the native `Array.prototype.reduce` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce#Description
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a,b -> a) -> a -> [b] -> a
      * @param {Function} fn The iterator function. Receives two values, the accumulator and the
      *        current element from the array.
      * @param {*} acc The accumulator value.
      * @param {Array} list The list to iterate over.
      * @return {*} The final, accumulated value.
-     * @alias reduceRight
      * @example
      *
      *      var pairs = [ ['a', 1], ['b', 2], ['c', 3] ];
@@ -12852,9 +12892,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return acc.concat(pair);
      *      };
      *
-     *      foldr(numbers, flattenPairs, []); //=> [ 'c', 3, 'b', 2, 'a', 1 ]
+     *      reduceRight(numbers, flattenPairs, []); //=> [ 'c', 3, 'b', 2, 'a', 1 ]
      */
-    var foldr = R.foldr = curry3(checkForMethod('foldr', function(fn, acc, list) {
+    R.reduceRight = curry3(checkForMethod('reduceRight', function _reduceRight(fn, acc, list) {
         var idx = list.length;
         while (idx--) {
             acc = fn(acc, list[idx]);
@@ -12862,28 +12902,36 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         return acc;
     }));
 
-    R.reduceRight = R.foldr;
+    /**
+     * @func
+     * @memberOf R
+     * @category List
+     * @see R.reduceRight
+     */
+    var foldr = R.foldr = R.reduceRight;
 
 
     /**
-     * Like `foldr`, but passes additional parameters to the predicate function. Moves through
+     * Like `reduceRight`, but passes additional parameters to the predicate function. Moves through
      * the input list from the right to the left.
      *
      * The iterator function receives four values: *(acc, value, index, list)*.
      *
-     * Note: `ramda.foldr.idx` does not skip deleted or unassigned indices (sparse arrays),
+     * Note: `R.reduceRight.idx` does not skip deleted or unassigned indices (sparse arrays),
      * unlike the native `Array.prototype.reduce` method. For more details on this behavior,
      * see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce#Description
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a,b,i,[b] -> a -> [b] -> a
      * @param {Function} fn The iterator function. Receives four values: the accumulator, the
      *        current element from `list`, that element's index, and the entire `list` itself.
      * @param {*} acc The accumulator value.
      * @param {Array} list The list to iterate over.
      * @return {*} The final, accumulated value.
+     * @alias reduceRight.idx
      * @example
      *
      *      var letters = ['a', 'b', 'c'];
@@ -12891,15 +12939,25 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return accObject[elem] = idx;
      *      };
      *
-     *      foldr.idx(letters, objectify, {}); //=> { 'c': 2, 'b': 1, 'a': 0 }
+     *      reduceRight.idx(letters, objectify, {}); //=> { 'c': 2, 'b': 1, 'a': 0 }
      */
-    R.foldr.idx = curry3(checkForMethod('foldr', function(fn, acc, list) {
+    R.reduceRight.idx = curry3(function _reduceRightIdx(fn, acc, list) {
         var idx = list.length;
         while (idx--) {
             acc = fn(acc, list[idx], idx, list);
         }
         return acc;
-    }));
+    });
+
+
+    /**
+     * @func
+     * @memberOf R
+     * @category List
+     * @alias foldr.idx
+     * @see R.reduceRight.idx
+     */
+    R.foldr.idx = R.reduceRight.idx;
 
 
     /**
@@ -12909,9 +12967,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * The iterator function receives one argument: *(seed)*.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> [b]) -> * -> [b]
      * @param {Function} fn The iterator function. receives one argument, `seed`, and returns
      *        either false to quit iteration or an array of length two to proceed. The element
      *        at index 0 of this array will be added to the resulting array, and the element
@@ -12938,13 +12997,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list, constructed by applying the supplied function to every element of the
      * supplied list.
      *
-     * Note: `ramda.map` does not skip deleted or unassigned indices (sparse arrays), unlike the
+     * Note: `R.map` does not skip deleted or unassigned indices (sparse arrays), unlike the
      * native `Array.prototype.map` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map#Description
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> b) -> [a] -> [b]
      * @param {Function} fn The function to be called on every element of the input `list`.
      * @param {Array} list The list to be iterated over.
      * @return {Array} The new list.
@@ -12954,7 +13014,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return x * 2;
      *      };
      *
-     *      ramda.map(double, [1, 2, 3]); //=> [2, 4, 6]
+     *      R.map(double, [1, 2, 3]); //=> [2, 4, 6]
      */
     function map(fn, list) {
         var idx = -1, len = list.length, result = new Array(len);
@@ -12968,20 +13028,21 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 
 
     /**
-     * Like `map`, but but passes additional parameters to the predicate function.
-     *
+     * Like `map`, but but passes additional parameters to the mapping function.
      * `fn` receives three arguments: *(value, index, list)*.
      *
-     * Note: `ramda.map.idx` does not skip deleted or unassigned indices (sparse arrays), unlike
+     * Note: `R.map.idx` does not skip deleted or unassigned indices (sparse arrays), unlike
      * the native `Array.prototype.map` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map#Description
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a,i,[b] -> b) -> [a] -> [b]
      * @param {Function} fn The function to be called on every element of the input `list`.
      * @param {Array} list The list to be iterated over.
      * @return {Array} The new list.
+     * @alias map.idx
      * @example
      *
      *      var squareEnds = function(elt, idx, list) {
@@ -12991,16 +13052,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return elt;
      *      };
      *
-     *      ramda.map.idx(squareEnds, [8, 6, 7, 5, 3, 0, 9];
+     *      R.map.idx(squareEnds, [8, 6, 7, 5, 3, 0, 9];
      *      //=> [64, 6, 7, 5, 3, 0, 81]
      */
-    R.map.idx = curry2(checkForMethod('map', function _mapIdx(fn, list) {
+    R.map.idx = curry2(function _mapIdx(fn, list) {
         var idx = -1, len = list.length, result = new Array(len);
         while (++idx < len) {
             result[idx] = fn(list[idx], idx, list);
         }
         return result;
-    }));
+    });
 
 
     /**
@@ -13008,9 +13069,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * generated by running each property of `obj` through `fn`. `fn` is passed one argument:
      * *(value)*.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (v -> v) -> {k: v} -> {k: v}
      * @param {Array} fn A function called for each property in `obj`. Its return value will
      * become a new property on the return object.
      * @param {Object} obj The object to iterate over.
@@ -13023,11 +13085,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return num * 2;
      *      };
      *
-     *      ramda.mapObj(double, values); //=> { x: 2, y: 4, z: 6 }
+     *      R.mapObj(double, values); //=> { x: 2, y: 4, z: 6 }
      */
     // TODO: consider mapObj.key in parallel with mapObj.idx.  Also consider folding together with `map` implementation.
     R.mapObj = curry2(function _mapObject(fn, obj) {
-        return foldl(function (acc, key) {
+        return foldl(function(acc, key) {
             acc[key] = fn(obj[key]);
             return acc;
         }, {}, keys(obj));
@@ -13038,14 +13100,17 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Like `mapObj`, but but passes additional arguments to the predicate function. The
      * predicate function is passed three arguments: *(value, key, obj)*.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (v, k, {k: v} -> v) -> {k: v} -> {k: v}
+     * @param {Array} fn A function called for each property in `obj`. Its return value will
      * @param {Array} fn A function called for each property in `obj`. Its return value will
      *        become a new property on the return object.
      * @param {Object} obj The object to iterate over.
      * @return {Object} A new object with the same keys as `obj` and values that are the result
      *         of running each property through `fn`.
+     * @alias mapObj.idx
      * @example
      *
      *      var values = { x: 1, y: 2, z: 3 };
@@ -13053,10 +13118,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return key + num;
      *      };
      *
-     *      ramda.mapObj(double, values); //=> { x: 'x2', y: 'y4', z: 'z6' }
+     *      R.mapObj(double, values); //=> { x: 'x2', y: 'y4', z: 'z6' }
      */
     R.mapObj.idx = curry2(function mapObjectIdx(fn, obj) {
-        return foldl(function (acc, key) {
+        return foldl(function(acc, key) {
             acc[key] = fn(obj[key], key, obj);
             return acc;
         }, {}, keys(obj));
@@ -13066,9 +13131,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * ap applies a list of functions to a list of values.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig [f] -> [a] -> [f a]
      * @param {Array} fns An array of functions
      * @param {Array} vs An array of values
      * @return the value of applying each the function `fns` to each value in `vs`
@@ -13090,9 +13156,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note this `of` is different from the ES6 `of`; See
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/of
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig a -> [a]
      * @param x any value
      * @return [x]
      * @example
@@ -13110,9 +13177,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `empty` wraps any object in an array. This implementation is compatible with the
      * Fantasy-land Monoid spec, and will work with types that implement that spec.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig * -> []
      * @return {Array} an empty array
      * @example
      *
@@ -13127,14 +13195,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `chain` maps a function over a list and concatenates the results.
      * This implementation is compatible with the
      * Fantasy-land Chain spec, and will work with types that implement that spec.
+     * `chain` is also known as `flatMap` in some libraries
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> [b]) -> [a] -> [b]
      * @param {Function}
      * @param {Array}
      * @return {Array}
-     * @alias flatMap
      * @example
      *
      * var duplicate = function(n) {
@@ -13146,27 +13215,32 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     R.chain = curry2(checkForMethod('chain', function _chain(f, list) {
         return unnest(map(f, list));
     }));
-    R.flatMap = R.chain;
 
 
     /**
      * Returns the number of elements in the array by returning `arr.length`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig [a] -> Number
      * @param {Array} arr The array to inspect.
      * @return {number} The size of the array.
-     * @alias length
      * @example
      *
-     *      ramda.size([]); //=> 0
-     *      ramda.size([1, 2, 3]); //=> 3
+     *      R.size([]); //=> 0
+     *      R.size([1, 2, 3]); //=> 3
      */
     R.size = function _size(arr) {
         return arr.length;
     };
 
+    /**
+     * @func
+     * @memberOf R
+     * @category List
+     * @see R.size
+     */
     R.length = R.size;
 
 
@@ -13174,13 +13248,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list containing only those items that match a given predicate function.
      * The predicate function is passed one argument: *(value)*.
      *
-     * Note that `ramda.filter` does not skip deleted or unassigned indices, unlike the native
+     * Note that `R.filter` does not skip deleted or unassigned indices, unlike the native
      * `Array.prototype.filter` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/filter#Description
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} The new filtered array.
@@ -13189,7 +13264,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var isEven = function(n) {
      *        return n % 2 === 0;
      *      };
-     *      var evens = ramda.filter(isEven, [1, 2, 3, 4]); // => [2, 4]
+     *      var evens = R.filter(isEven, [1, 2, 3, 4]); // => [2, 4]
      */
     var filter = function _filter(fn, list) {
         var idx = -1, len = list.length, result = [];
@@ -13208,18 +13283,20 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Like `filter`, but passes additional parameters to the predicate function. The predicate
      * function is passed three arguments: *(value, index, list)*.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a, i, [a] -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} The new filtered array.
+     * @alias filter.idx
      * @example
      *
      *      var lastTwo = function(val, idx, list) {
      *        return list.length - idx <= 2;
      *      };
-     *      ramda.filter.idx(lastTwo, [8, 6, 7, 5, 3, 0, 9]); //=> [0, 9]
+     *      R.filter.idx(lastTwo, [8, 6, 7, 5, 3, 0, 9]); //=> [0, 9]
      */
     function filterIdx(fn, list) {
         var idx = -1, len = list.length, result = [];
@@ -13230,17 +13307,17 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         }
         return result;
     }
-
-    R.filter.idx = curry2(checkForMethod('filter', filterIdx));
+    R.filter.idx = curry2(filterIdx);
 
 
     /**
      * Similar to `filter`, except that it keeps only values for which the given predicate
      * function returns falsy. The predicate function is passed one argument: *(value)*.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} The new filtered array.
@@ -13249,12 +13326,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var isOdd = function(n) {
      *        return n % 2 === 1;
      *      };
-     *      var evens = ramda.reject(isOdd, [1, 2, 3, 4]); // => [2, 4]
+     *      var evens = R.reject(isOdd, [1, 2, 3, 4]); // => [2, 4]
      */
     var reject = function _reject(fn, list) {
         return filter(not(fn), list);
     };
-
     R.reject = curry2(reject);
 
 
@@ -13262,12 +13338,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Like `reject`, but passes additional parameters to the predicate function. The predicate
      * function is passed three arguments: *(value, index, list)*.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a, i, [a] -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} The new filtered array.
+     * @alias reject.idx
      * @example
      *
      *      var lastTwo = function(val, idx, list) {
@@ -13287,9 +13365,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `false`. Excludes the element that caused the predicate function to fail. The predicate
      * function is passed one argument: *(value)*.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} A new array.
@@ -13312,9 +13391,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list containing the first `n` elements of the given list.  If
      * `n > * list.length`, returns a list of `list.length` elements.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig Number -> [a] -> [a]
      * @param {number} n The number of elements to return.
      * @param {Array} list The array to query.
      * @return {Array} A new array containing the first elements of `list`.
@@ -13330,9 +13410,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `true`. Excludes the element that caused the predicate function to fail. The predicate
      * function is passed one argument: *(value)*.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} A new array.
@@ -13354,28 +13435,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a new list containing all but the first `n` elements of the given `list`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig Number -> [a] -> [a]
      * @param {number} n The number of elements of `list` to skip.
      * @param {Array} list The array to consider.
      * @return {Array} The last `n` elements of `list`.
-     * @alias drop
+     * @example
+     *
+     *     skip(3, [1,2,3,4,5,6,7]); // => [4,5,6,7]
      */
     R.skip = curry2(checkForMethod('skip', function _skip(n, list) {
         return _slice(list, n);
     }));
-
-    R.drop = R.skip;
 
 
     /**
      * Returns the first element of the list which matches the predicate, or `undefined` if no
      * element matches.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> a | undefined
      * @param {Function} fn The predicate function used to determine if the element is the
      *        desired one.
      * @param {Array} list The array to consider.
@@ -13401,9 +13484,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns the index of the first element of the list which matches the predicate, or `-1`
      * if no element matches.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> Number
      * @param {Function} fn The predicate function used to determine if the element is the
      * desired one.
      * @param {Array} list The array to consider.
@@ -13430,9 +13514,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns the last element of the list which matches the predicate, or `undefined` if no
      * element matches.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> a | undefined
      * @param {Function} fn The predicate function used to determine if the element is the
      * desired one.
      * @param {Array} list The array to consider.
@@ -13445,7 +13530,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.findLast = curry2(function _findLast(fn, list) {
         var idx = list.length;
-        while (--idx) {
+        while (idx--) {
             if (fn(list[idx])) {
                 return list[idx];
             }
@@ -13457,9 +13542,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns the index of the last element of the list which matches the predicate, or
      * `-1` if no element matches.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> Number
      * @param {Function} fn The predicate function used to determine if the element is the
      * desired one.
      * @param {Array} list The array to consider.
@@ -13472,7 +13558,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.findLastIndex = curry2(function _findLastIndex(fn, list) {
         var idx = list.length;
-        while (--idx) {
+        while (idx--) {
             if (fn(list[idx])) {
                 return idx;
             }
@@ -13485,23 +13571,23 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns `true` if all elements of the list match the predicate, `false` if there are any
      * that don't.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> Boolean
      * @param {Function} fn The predicate function.
      * @param {Array} list The array to consider.
      * @return {boolean} `true` if the predicate is satisfied by every element, `false`
      *         otherwise
-     * @alias every
      * @example
      *
      *      var lessThan2 = flip(lt)(2);
      *      var lessThan3 = flip(lt)(3);
      *      var xs = range(1, 3); //= [1, 2]
-     *      all(lessThan2)(xs); //= false
-     *      all(lessThan3)(xs); //= true
+     *      every(lessThan2)(xs); //= false
+     *      every(lessThan3)(xs); //= true
      */
-    function all(fn, list) {
+    function every(fn, list) {
         var i = -1;
         while (++i < list.length) {
             if (!fn(list[i])) {
@@ -13510,32 +13596,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         }
         return true;
     }
-
-    R.all = curry2(all);
-    R.every = R.all;
+    R.every = curry2(every);
 
 
     /**
      * Returns `true` if at least one of elements of the list match the predicate, `false`
      * otherwise.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a -> Boolean) -> [a] -> Boolean
      * @param {Function} fn The predicate function.
      * @param {Array} list The array to consider.
      * @return {boolean} `true` if the predicate is satisfied by at least one element, `false`
      *         otherwise
-     * @alias some
      * @example
      *
      *      var lessThan0 = flip(lt)(0);
      *      var lessThan2 = flip(lt)(2);
      *      var xs = range(1, 3); //= [1, 2]
-     *      any(lessThan0)(xs); //= false
-     *      any(lessThan2)(xs); //= true
+     *      some(lessThan0)(xs); //= false
+     *      some(lessThan2)(xs); //= true
      */
-    function any(fn, list) {
+    function some(fn, list) {
         var i = -1;
         while (++i < list.length) {
             if (fn(list[i])) {
@@ -13544,8 +13628,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         }
         return false;
     }
-    R.any = curry2(any);
-    R.some = R.any;
+    R.some = curry2(some);
 
 
     /**
@@ -13568,7 +13651,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
             i = from < 0 ? Math.max(0, length + from) : from;
         }
         for (; i < length; i++) {
-            if (array[i] === item) return i;
+            if (array[i] === item) {
+                return i;
+            }
         }
         return -1;
     };
@@ -13594,7 +13679,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
             idx = from < 0 ? idx + from + 1 : Math.min(idx, from + 1);
         }
         while (--idx >= 0) {
-            if (array[idx] === item) return idx;
+            if (array[idx] === item) {
+                return idx;
+            }
         }
         return -1;
     };
@@ -13605,9 +13692,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * (by strict equality),
      * or -1 if the item is not included in the array.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig a -> [a] -> Number
      * @param target The item to find.
      * @param {Array} list The array to search in.
      * @return {Number} the index of the target, or -1 if the target is not found.
@@ -13628,9 +13716,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `indexOf.from` will only search the tail of the array, starting from the
      * `fromIdx` parameter.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig a -> Number -> [a] -> Number
      * @param target The item to find.
      * @param {Array} list The array to search in.
      * @param {Number} fromIdx the index to start searching from
@@ -13650,9 +13739,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns the position of the last occurrence of an item (by strict equality) in
      * an array, or -1 if the item is not included in the array.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig a -> [a] -> Number
      * @param target The item to find.
      * @param {Array} list The array to search in.
      * @return {Number} the index of the target, or -1 if the target is not found.
@@ -13673,9 +13763,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `lastIndexOf.from` will only search the tail of the array, starting from the
      * `fromIdx` parameter.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig a -> Number -> [a] -> Number
      * @param target The item to find.
      * @param {Array} list The array to search in.
      * @param {Number} fromIdx the index to start searching from
@@ -13695,9 +13786,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns `true` if the specified item is somewhere in the list, `false` otherwise.
      * Equivalent to `indexOf(a)(list) > -1`. Uses strict (`===`) equality checking.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig a -> [a] -> Boolean
      * @param {Object} a The item to compare against.
      * @param {Array} list The array to consider.
      * @return {boolean} `true` if the item is in the list, `false` otherwise.
@@ -13720,13 +13812,20 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns `true` if the `x` is found in the `list`, using `pred` as an
      * equality predicate for `x`.
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category List
+     * @sig (x, a -> Boolean) -> x -> [a] -> Boolean
      * @param {Function} pred :: x -> x -> Bool
      * @param x the item to find
      * @param {Array} list the list to iterate over
      * @return {Boolean} `true` if `x` is in `list`, else `false`
-     */ //TODO: add an example
+     * @example
+     *
+     *     var xs = [{x: 12}, {x: 11}, {x: 10}];
+     *     containsWith(function(a, b) { return a.x === b.x; }, {x: 10}, xs); // true
+     *     containsWith(function(a, b) { return a.x === b.x; }, {x: 1}, xs); // false
+     */
     function containsWith(pred, x, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
@@ -13745,9 +13844,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Equality is strict here, meaning reference equality for objects and non-coercing equality
      * for primitives.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig [a] -> [a]
      * @param {Array} list The array to consider.
      * @return {Array} The list of unique items.
      * @example
@@ -13771,11 +13871,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 
     /**
      * Returns `true` if all elements are unique, otherwise `false`.
-     * Uniquness is determined using strict equality (`===`).
+     * Uniqueness is determined using strict equality (`===`).
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig [a] -> Boolean
      * @param {Array} list The array to consider.
      * @return {boolean} `true` if all elements are unique, else `false`.
      * @example
@@ -13801,9 +13902,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * upon the value returned by applying the supplied predicate to two list elements. Prefers
      * the first item if two items compare equal based on the predicate.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig (x, a -> Boolean) -> [a] -> [a]
      * @param {Array} list The array to consider.
      * @return {Array} The list of unique items.
      * @example
@@ -13830,9 +13932,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a new list by plucking the same named property off all objects in the list supplied.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig String -> {*} -> [*]
      * @param {string|number} key The key name to pluck off of each object.
      * @param {Array} list The array to consider.
      * @return {Array} The list of values for the given key.
@@ -13878,49 +13981,46 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list by pulling every item out of it (and all its sub-arrays) and putting
      * them in a new array, depth-first.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig [a] -> [b]
      * @param {Array} list The array to consider.
      * @return {Array} The flattened list.
-     * @alias flattenDeep
      * @example
      *
      * flatten([1, 2, [3, 4], 5, [6, [7, 8, [9, [10, 11], 12]]]]);
      * //= [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
      */
     var flatten = R.flatten = makeFlat(true);
-    R.flattenDeep = R.flatten;
 
 
     /**
      * Returns a new list by pulling every item at the first level of nesting out, and putting
      * them in a new array.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig [a] -> [b]
      * @param {Array} list The array to consider.
      * @return {Array} The flattened list.
-     * @alias flattenShallow
      * @example
      *
-     * flat([1, [2], [[3]]]);
-     * //= [1, 2, [3]]
-     * flat([[1, 2], [3, 4], [5, 6]]);
-     * //= [1, 2, 3, 4, 5, 6]
+     * unnest([1, [2], [[3]]]); //= [1, 2, [3]]
+     * unnest([[1, 2], [3, 4], [5, 6]]); //= [1, 2, 3, 4, 5, 6]
      */
     var unnest = R.unnest = makeFlat(false);
-    R.flattenShallow = R.unnest;
 
 
     /**
      * Creates a new list out of the two supplied by applying the function to each
      * equally-positioned pair in the lists.
      *
-     * @static
+     * @function
      * @memberOf R
      * @category List
+     * @sig (a,b -> c) -> a -> b -> [c]
      * @param {Function} fn The function used to combine the two elements into one value.
      * @param {Array} list1 The first array to consider.
      * @param {Array} list2 The second array to consider.
@@ -13944,9 +14044,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Creates a new list out of the two supplied by pairing up equally-positioned items from
      * both lists. Note: `zip` is equivalent to `zipWith(function(a, b) { return [a, b] })`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig a -> b -> [[a,b]]
      * @param {Array} list1 The first array to consider.
      * @param {Array} list2 The second array to consider.
      * @return {Array} The list made by pairing up same-indexed elements of `list1` and `list2`.
@@ -13969,9 +14070,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Creates a new object out of a list of keys and a list of values.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig k -> v -> {k: v}
      * @param {Array} keys The array that will be properties on the output object.
      * @param {Array} values The list of values on the output object.
      * @return {Object} The object made by pairing up same-indexed elements of `keys` and `values`.
@@ -13992,9 +14094,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Creates a new object out of a list key-value pairs.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig [[k,v]] -> {k: v}
      * @param {Array} An array of two-element arrays that will be the keys and values of the ouput object.
      * @return {Object} The object made by pairing up `keys` and `values`.
      * @example
@@ -14017,10 +14120,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Creates a new list out of the two supplied by applying the function
      * to each possible pair in the lists.
      *
-     * @see xprod
-     * @static
+     * @see R.xprod
+     * @func
      * @memberOf R
      * @category List
+     * @sig (a,b -> c) -> a -> b -> [c]
      * @param {Function} fn The function to join pairs with.
      * @param {Array} as The first list.
      * @param {Array} bs The second list.
@@ -14052,9 +14156,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Creates a new list out of the two supplied by creating each possible
      * pair from the lists.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig a -> b -> [[a,b]]
      * @param {Array} as The first list.
      * @param {Array} bs The second list.
      * @return {Array} The list made by combining each possible pair from
@@ -14088,9 +14193,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list with the same elements as the original list, just
      * in the reverse order.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig [a] -> [a]
      * @param {Array} list The list to reverse.
      * @return {Array} A copy of the list in reverse order.
      * @example
@@ -14110,9 +14216,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * (exclusive). In mathematical terms, `range(a, b)` is equivalent to
      * the half-open interval `[a, b)`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig Number -> Number -> [Number]
      * @param {number} from The first number in the list.
      * @param {number} to One more than the last number in the list.
      * @return {Array} The list of numbers in tthe set `[a, b)`.
@@ -14137,9 +14244,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a string made by inserting the `separator` between each
      * element and concatenating all the elements into a single string.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig String -> [a] -> String
      * @param {string|number} separator The string used to separate the elements.
      * @param {Array} xs The elements to join into a string.
      * @return {string} The string made by concatenating `xs` with `separator`.
@@ -14155,9 +14263,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns the elements from `xs` starting at `a` and ending at `b - 1`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig Number -> Number -> [a] -> [a]
      * @param {number} a The starting index.
      * @param {number} b One more than the ending index.
      * @param {Array} xs The list to take elements from.
@@ -14173,9 +14282,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns the elements from `xs` starting at `a` going to the end of `xs`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category List
+     * @sig Number -> [a] -> [a]
      * @param {number} a The starting index.
      * @param {Array} xs The list to take elements from.
      * @return {Array} The items from `a` to the end of `xs`.
@@ -14197,8 +14307,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * copy of the list with the changes.
      * <small>No lists have been harmed in the application of this function.</small>
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category List
+     * @sig Number -> Number -> [a] -> [a]
      * @param {Number} start The position to start removing elements
      * @param {Number} count The number of elements to remove
      * @param {Array} list The list to remove from
@@ -14217,8 +14329,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * that this is not destructive_: it returns a copy of the list with the changes.
      * <small>No lists have been harmed in the application of this function.</small>
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category
+     * @sig Number -> a -> [a] -> [a]
      * @param {Number} index The position to insert the element
      * @param elt The element to insert into the Array
      * @param {Array} list The list to insert into
@@ -14238,8 +14352,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * is not destructive_: it returns a copy of the list with the changes.
      * <small>No lists have been harmed in the application of this function.</small>
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category List
+     * @sig Number -> [a] -> [a] -> [a]
      * @param {Number} index The position to insert the sublist
      * @param {Array} elts The sub-list to insert into the Array
      * @param {Array} list The list to insert the sub-list into
@@ -14257,8 +14373,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Makes a comparator function out of a function that reports whether the first element is less than the second.
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category Function
+     * @sig (a, b -> Boolean) -> (a, b -> Number)
      * @param {Function} pred A predicate function of arity two.
      * @return {Function} a Function :: a -> b -> Int that returns `-1` if a < b, `1` if b < a, otherwise `0`
      * @example
@@ -14269,7 +14387,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      sort(cmp, people);
      */
     var comparator = R.comparator = function _comparator(pred) {
-        return function (a, b) {
+        return function(a, b) {
             return pred(a, b) ? -1 : pred(b, a) ? 1 : 0;
         };
     };
@@ -14280,8 +14398,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * time and return a negative number if the first value is smaller, a positive number if it's larger, and zero
      * if they are equal.  Please note that this is a **copy** of the list.  It does not modify the original.
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category List
+     * @sig (a,a -> Number) -> [a] -> [a]
      * @param {Function} comparator A sorting function :: a -> b -> Int
      * @param {Array} list The list to sort
      * @return {Array} a new array with its elements sorted by the comparator function.
@@ -14298,8 +14418,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Splits a list into sublists stored in an object, based on the result of calling a String-returning function
      * on each element, and grouping the results according to values returned.
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category List
+     * @sig (a -> s) -> [a] -> {s: a}
      * @param {Function} fn Function :: a -> String
      * @param {Array} list The array to group
      * @return {Object} An object with the output of `fn` for keys, mapped to arrays of elements
@@ -14323,7 +14445,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *     // }
      */
     R.groupBy = curry2(function _groupBy(fn, list) {
-        return foldl(function (acc, elt) {
+        return foldl(function(acc, elt) {
             var key = fn(elt);
             acc[key] = append(elt, acc[key] || (acc[key] = []));
             return acc;
@@ -14335,8 +14457,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Takes a predicate and a list and returns the pair of lists of
      * elements which do and do not satisfy the predicate, respectively.
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category List
+     * @sig (a -> Boolean) -> [a] -> [[a],[a]]
      * @param {Function} pred Function :: a -> Boolean
      * @param {Array} list The array to partition
      * @return {Array} A nested array, containing first an array of elements that satisfied the predicate,
@@ -14347,7 +14471,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *     // => [ [ 'sss', 'bars' ],  [ 'ttt', 'foo' ] ]
      */
     R.partition = curry2(function _partition(pred, list) {
-        return foldl(function (acc, elt) {
+        return foldl(function(acc, elt) {
             acc[pred(elt) ? 0 : 1].push(elt);
             return acc;
         }, [[], []], list);
@@ -14368,8 +14492,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Runs the given function with the supplied object, then returns the object.
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category Function
+     * @sig a -> (a -> *) -> a
      * @param {*} x
      * @param {Function} fn The function to call with `x`. The return value of `fn` will be thrown away.
      * @return {*} x
@@ -14387,8 +14513,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Tests if two items are equal.  Equality is strict here, meaning reference equality for objects and
      * non-coercing equality for primitives.
      *
-     * @static
+     * @func
      * @memberOf R
+     * @category Relation
+     * @sig a -> b -> Boolean
      * @param {*} a
      * @param {*} b
      * @return {Boolean}
@@ -14400,30 +14528,25 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      eq(1, 1) // => true
      *      eq(1, '1') // => false
      */
-    R.eq = function _eq(a, b) {
-        return arguments.length < 2 ? function _eq(b) { return a === b; } : a === b;
-    };
+    R.eq = curry2(function _eq(a, b) { return a === b; });
 
 
     /**
      * Returns a function that when supplied an object returns the indicated property of that object, if it exists.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig s -> {s: a} -> a
      * @param {String} p The property name
      * @param {Object} obj The object to query
      * @return {*} The value at obj.p
-     * @alias nth
-     * @alias get
      * @example
      *
      *      prop('x', {x: 100}) // => 100
      *      prop('x', {}) // => undefined
      *
-     *      // or via the `nth` alias:
-     *
-     *      var fifth = nth(4); // indexed from 0, remember
+     *      var fifth = prop(4); // indexed from 0, remember
      *      fifth(['Bashful', 'Doc', 'Dopey', 'Grumpy', 'Happy', 'Sleepy', 'Sneezy']);
      *      //=> 'Happy'
      */
@@ -14435,17 +14558,24 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         return obj[p];
     };
 
-    R.nth = R.get = R.prop;
+    /**
+     * @func
+     * @memberOf R
+     * @category Object
+     * @see R.prop
+     */
+    R.get = R.prop;
 
 
     /**
      * Returns the value at the specified property.
      * The only difference from `prop` is the parameter order.
      *
-     * @static
+     * @func
      * @memberOf R
-     * @see prop
+     * @see R.prop
      * @category Object
+     * @sig {s: a} -> s -> a
      * @param {Object} obj The object to query
      * @param {String} prop The property name
      * @return {*} The value at obj.p
@@ -14468,9 +14598,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * returns the value of that property.
      * Otherwise returns the provided default value.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig s -> v -> {s: x} -> x | v
      * @param {String} p The name of the property to return.
      * @param {*} val The default value.
      * @returns {*} The value of given property or default value.
@@ -14496,9 +14627,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * after `fn` and `obj` are passed in to `fn`. If no additional arguments are passed to `func`,
      * `fn` is invoked with no arguments.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig k -> {k : v} -> v(*)
      * @param {String} fn The name of the property mapped to the function to invoke
      * @param {Object} obj The object
      * @return {*} The value of invoking `obj.fn`
@@ -14509,11 +14641,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var obj = { f: function() { return 'f called'; } };
      *      func('f', obj); // => 'f called'
      */
-    R.func = function func(fn, obj) { // TODO: change param name: reserve `fn` for functions, not names?
+    R.func = function func(funcName, obj) {
         switch (arguments.length) {
             case 0: throw NO_ARGS_EXCEPTION;
-            case 1: return function(obj) { return obj[fn].apply(obj, _slice(arguments, 1)); };
-            default: return obj[fn].apply(obj, _slice(arguments, 2));
+            case 1: return function(obj) { return obj[funcName].apply(obj, _slice(arguments, 1)); };
+            default: return obj[funcName].apply(obj, _slice(arguments, 2));
         }
     };
 
@@ -14521,46 +14653,22 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a function that always returns the given value.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Function
+     * @sig a -> (* -> a)
      * @param {*} val The value to wrap in a function
      * @return {Function} A Function :: * -> val
-     * @alias constant
-     * @alias K
      * @example
      *
      *      var t = always('Tee');
      *      t(); // => 'Tee'
      */
     var always = R.always = function _always(val) {
-        return function () {
+        return function() {
             return val;
         };
     };
-
-    R.constant = R.K = R.always;
-
-
-    /**
-     * Scans a list for a `null` or `undefined` element.
-     * Returns true if it finds one, false otherwise.
-     *
-     * @static
-     * @memberOf R
-     * @category list
-     * @param {Array} list The array to scan
-     * @return {Boolean}
-     * @example
-     *
-     *      anyBlanks([1,2,null,3,4]); // => true
-     *      anyBlanks([1,2,undefined,3,4]); // => true
-     *      anyBlanks([1,2,3,4]); // => false
-     *      anyBlanks([]); // => false
-     */
-    var anyBlanks = R.any(function _any(val) {
-        return val == null;
-    });
 
 
     /**
@@ -14579,9 +14687,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {k: v} -> [k]
      * @param {Object} obj The object to extract properties from
      * @return {Array} An array of the object's own properties
      * @example
@@ -14589,7 +14698,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      keys({a: 1, b: 2, c: 3}) // => ['a', 'b', 'c']
      */
     var keys = R.keys = function _keys(obj) {
-        if (nativeKeys) return nativeKeys(Object(obj));
+        if (nativeKeys) {
+            return nativeKeys(Object(obj));
+        }
         var prop, ks = [];
         for (prop in obj) {
             if (hasOwnProperty.call(obj, prop)) {
@@ -14606,9 +14717,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {k: v} -> [k]
      * @param {Object} obj The object to extract properties from
      * @return {Array} An array of the object's own and prototype properties
      * @example
@@ -14646,9 +14758,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {k: v} -> [[k,v]]
      * @param {Object} obj The object to extract from
      * @return {Array} An array of key, value arrays from the object's own properties
      * @example
@@ -14664,9 +14777,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {k: v} -> [[k,v]]
      * @param {Object} obj The object to extract from
      * @return {Array} An array of key, value arrays from the object's own
      *         and prototype properties
@@ -14685,9 +14799,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed across
      * different JS platforms.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {k: v} -> [v]
      * @param {Object} obj The object to extract values from
      * @return {Array} An array of the values of the object's own properties
      * @example
@@ -14711,9 +14826,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {k: v} -> [v]
      * @param {Object} obj The object to extract values from
      * @return {Array} An array of the values of the object's own and prototype properties
      * @example
@@ -14757,9 +14873,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a partial copy of an object containing only the keys specified.  If the key does not exist, the
      * property is ignored.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig [k] -> {k: v} -> {k: v}
      * @param {Array} names an array of String propery names to copy onto a new object
      * @param {Object} obj The object to copy from
      * @return {Object} A new object with only properties from `names` on it.
@@ -14778,9 +14895,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a partial copy of an object omitting the keys specified.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig [k] -> {k: v} -> {k: v}
      * @param {Array} names an array of String propery names to omit from the new object
      * @param {Object} obj The object to copy from
      * @return {Object} A new object with properties from `names` not on it.
@@ -14799,15 +14917,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a partial copy of an object containing only the keys that
      * satisfy the supplied predicate.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig (v, k -> Boolean) -> {k: v} -> {k: v}
      * @param {Function} pred A predicate to determine whether or not a key
      *        should be included on the output object.
      * @param {Object} obj The object to copy from
      * @return {Object} A new object with only properties that satisfy `pred`
      *         on it.
-     * @see pick
+     * @see R.pick
      * @example
      *
      *      function isUpperCase(x) { return x.toUpperCase() === x; }
@@ -14820,12 +14939,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Internal implementation of `pickAll`
      *
      * @private
-     * @see pickAll
+     * @see R.pickAll
      */
     // TODO: document, even for internals...
     var pickAll = function _pickAll(names, obj) {
         var copy = {};
-        each(function (name) {
+        forEach(function(name) {
             copy[name] = obj[name];
         }, names);
         return copy;
@@ -14835,17 +14954,18 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Similar to `pick` except that this one includes a `key: undefined` pair for properties that don't exist.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig [k] -> {k: v} -> {k: v}
      * @param {Array} names an array of String propery names to copy onto a new object
      * @param {Object} obj The object to copy from
      * @return {Object} A new object with only properties from `names` on it.
-     * @see pick
+     * @see R.pick
      * @example
      *
-     *      pick(['a', 'd'], {a: 1, b: 2, c: 3, d: 4}) // => {a: 1, d: 4}
-     *      pick(['a', 'e', 'f'], {a: 1, b: 2, c: 3, d: 4}) // => {a: 1, e: undefined, f: undefined}
+     *      pickAll(['a', 'd'], {a: 1, b: 2, c: 3, d: 4}) // => {a: 1, d: 4}
+     *      pickAll(['a', 'e', 'f'], {a: 1, b: 2, c: 3, d: 4}) // => {a: 1, e: undefined, f: undefined}
      */
     R.pickAll = curry2(pickAll);
 
@@ -14880,9 +15000,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * merged with the own properties of object b.
      * This function will *not* mutate passed-in objects.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {k: v} -> {k: v} -> {k: v}
      * @param {Object} a source object
      * @param {Object} b object with higher precendence in output
      * @returns {Object} Returns the destination object.
@@ -14899,9 +15020,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Reports whether two functions have the same value for the specified property.  Useful as a curried predicate.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig k -> {k: v} -> {k: v} -> Boolean
      * @param {String} prop The name of the property to compare
      * @param {Object} obj1
      * @param {Object} obj2
@@ -14923,7 +15045,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * internal helper for `where`
      *
      * @private
-     * @see where
+     * @see R.where
      */
     function satisfiesSpec(spec, parsedSpec, testObj) {
         if (spec === testObj) { return true; }
@@ -14965,9 +15087,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `where` is well suited to declarativley expressing constraints for other functions, e.g.,
      * `filter`, `find`, `pickWith`, etc.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {k: v} -> {k: v} -> Boolean
      * @param {Object} spec
      * @param {Object} testObj
      * @return {Boolean}
@@ -14986,9 +15109,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.where = function where(spec, testObj) {
         var parsedSpec = R.groupBy(function(key) {
-                return typeof spec[key] === 'function' ? 'fn' : 'obj';
-            }, keys(spec)
-        );
+            return typeof spec[key] === 'function' ? 'fn' : 'obj';
+        }, keys(spec));
+
         switch (arguments.length) {
             case 0: throw NO_ARGS_EXCEPTION;
             case 1:
@@ -15014,9 +15137,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * functions become global functions.
      * Warning: This function *will* mutate the object provided.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category Object
+     * @sig -> {*} -> {*}
      * @param {Object} obj The object to attach ramda functions
      * @return {Object} a reference to the mutated object
      * @example
@@ -15034,9 +15158,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * See if an object (`val`) is an instance of the supplied constructor.
      * This function will check up the inheritance chain, if any.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category type
+     * @sig (* -> {*}) -> a -> Boolean
      * @param {Object} ctor A constructor
      * @param {*} val The value to test
      * @return {Boolean}
@@ -15044,9 +15169,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      *      is(Object, {}) // => true
      *      is(Number, 1) // => true
+     *      is(Object, 1) // => false
      *      is(String, 's') // => true
      *      is(String, new String('')) // => true
      *      is(Object, new String('')) // => true
+     *      is(Object, 's') // => false
      *      is(Number, {}) // => false
      */
     R.is = curry2(function is(ctor, val) {
@@ -15057,10 +15184,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * A function that always returns `0`. Any passed in parameters are ignored.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category function
-     * @see always
+     * @sig * -> 0
+     * @see R.always
      * @return {Number} 0. Always zero.
      * @example
      *
@@ -15072,10 +15200,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * A function that always returns `false`. Any passed in parameters are ignored.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category function
-     * @see always
+     * @sig * -> false
+     * @see R.always
      * @return {Boolean} false
      * @example
      *
@@ -15087,10 +15216,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * A function that always returns `true`. Any passed in parameters are ignored.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category function
-     * @see always
+     * @sig * -> true
+     * @see R.always
      * @return {Boolean} true
      * @example
      *
@@ -15114,9 +15244,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * this is short-circuited, meaning that the second function will not be invoked if the first returns a false-y
      * value.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category logic
+     * @sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
      * @param {Function} f a predicate
      * @param {Function} g another predicate
      * @return {Function} a function that applies its arguments to `f` and `g` and ANDs their outputs together.
@@ -15140,9 +15271,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * this is short-circuited, meaning that the second function will not be invoked if the first returns a truth-y
      * value.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category logic
+     * @sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
      * @param {Function} f a predicate
      * @param {Function} g another predicate
      * @return {Function} a function that applies its arguments to `f` and `g` and ORs their outputs together.
@@ -15165,9 +15297,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * A function wrapping a call to the given function in a `!` operation.  It will return `true` when the
      * underlying function would return a false-y value, and `false` when it would return a truth-y one.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category logic
+     * @sig (*... -> Boolean) -> (*... -> Boolean)
      * @param {Function} f a predicate
      * @return {Function} a function that applies its arguments to `f` and logically inverts its output.
      * @example
@@ -15186,7 +15319,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Create a predicate wrapper which will call a pick function (all/any) for each predicate
      *
      * @private
-     * @see all, any
+     * @see R.every
+     * @see R.some
      */
     // TODO: document, even for internals...
     var predicateWrap = function _predicateWrap(predPicker) {
@@ -15207,11 +15341,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 
 
     /**
-     * Given a list of predicates returns a new predicate that will be true exactly when all of them are.
+     * Given a list of predicates, returns a new predicate that will be true exactly when all of them are.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category logic
+     * @sig [(*... -> Boolean)] -> (*... -> Boolean)
      * @param {Array} list An array of predicate functions
      * @param {*} optional Any arguments to pass into the predicates
      * @return {Function} a function that applies its arguments to each of
@@ -15224,15 +15359,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      f(11) // => false
      *      f(12) // => true
      */
-    R.allPredicates = predicateWrap(all);
+    R.allPredicates = predicateWrap(every);
 
 
     /**
      * Given a list of predicates returns a new predicate that will be true exactly when any one of them is.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category logic
+     * @sig [(*... -> Boolean)] -> (*... -> Boolean)
      * @param {Array} list An array of predicate functions
      * @param {*} optional Any arguments to pass into the predicates
      * @return {Function}  a function that applies its arguments to each of the predicates, returning
@@ -15246,7 +15382,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      f(8) // => true
      *      f(9) // => false
      */
-    R.anyPredicates = predicateWrap(any);
+    R.anyPredicates = predicateWrap(some);
 
 
 
@@ -15261,9 +15397,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Adds two numbers (or strings). Equivalent to `a + b` but curried.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
+     * @sig String -> String -> String
      * @param {number|string} a The first value.
      * @param {number|string} b The second value.
      * @return {number|string} The result of `a + b`.
@@ -15280,9 +15418,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Multiplies two numbers. Equivalent to `a * b` but curried.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
      * @param {number} a The first value.
      * @param {number} b The second value.
      * @return {number} The result of `a * b`.
@@ -15300,13 +15439,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Subtracts two numbers. Equivalent to `a - b` but curried.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
      * @param {number} a The first value.
      * @param {number} b The second value.
      * @return {number} The result of `a - b`.
-     * @see subtractN
+     * @see R.subtractN
      * @example
      *
      *      var complementaryAngle = subtract(90);
@@ -15325,9 +15465,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * curried. Probably more useful when partially applied than
      * `subtract`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
      * @param {number} a The first value.
      * @param {number} b The second value.
      * @return {number} The result of `a - b`.
@@ -15349,13 +15490,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * While at times the curried version of `divide` might be useful,
      * probably the curried version of `divideBy` will be more useful.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
      * @param {number} a The first value.
      * @param {number} b The second value.
      * @return {number} The result of `a / b`.
-     * @see divideBy
+     * @see R.divideBy
      * @example
      *
      *      var reciprocal = divide(1);
@@ -15371,13 +15513,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * divided by the first.  The curried version of `divideBy` may prove more useful
      * than that of `divide`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
      * @param {number} a The second value.
      * @param {number} b The first value.
      * @return {number} The result of `b / a`.
-     * @see divide
+     * @see R.divide
      * @example
      *
      *      var half = divideBy(2);
@@ -15392,13 +15535,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that this functions preserves the JavaScript-style behavior for
      * modulo. For mathematical modulo see `mathMod`
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
      * @param {number} a The value to the divide.
      * @param {number} b The pseudo-modulus
      * @return {number} The result of `b % a`.
-     * @see moduloBy, mathMod
+     * @see R.moduloBy
+     * @see R.mathMod
      * @example
      *
      *      modulo(17, 3) // => 2
@@ -15425,17 +15570,18 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 
     /**
      * mathMod behaves like the modulo operator should mathematically, unlike the `%`
-     * operator (and by extension, ramda.modulo). So while "-17 % 5" is -2,
+     * operator (and by extension, R.modulo). So while "-17 % 5" is -2,
      * mathMod(-17, 5) is 3. mathMod requires Integer arguments, and returns NaN
      * when the modulus is zero or negative.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
      * @param {number} m The dividend.
      * @param {number} p the modulus.
      * @return {number} The result of `b mod a`.
-     * @see moduloBy
+     * @see R.moduloBy
      * @example
      *
      *      mathMod(-17, 5)  // 3
@@ -15446,8 +15592,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      mathMod(17, 5.3) // NaN
      */
     R.mathMod = curry2(function _mathMod(m, p) {
-        if (!isInteger(m) || m < 1) { return NaN; }
-        if (!isInteger(p)) { return NaN; }
+        if (!isInteger(m)) { return NaN; }
+        if (!isInteger(p) || p < 1) { return NaN; }
         return ((m % p) + p) % p;
     });
 
@@ -15456,13 +15602,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Reversed version of `modulo`, where the second parameter is divided by the first.  The curried version of
      * this one might be more useful than that of `modulo`.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Number
      * @param {number} m The dividend.
      * @param {number} p the modulus.
      * @return {number} The result of `b mod a`.
-     * @see modulo
+     * @see R.modulo
      * @example
      *
      *      var isOdd = moduloBy(2);
@@ -15475,9 +15622,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Adds together all the elements of a list.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig [Number] -> Number
      * @param {Array} list An array of numbers
      * @return {number} The sum of all the numbers in the list.
      * @see reduce
@@ -15491,9 +15639,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Multiplies together all the elements of a list.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig [Number] -> Number
      * @param {Array} list An array of numbers
      * @return {number} The product of all the numbers in the list.
      * @see reduce
@@ -15507,9 +15656,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns true if the first parameter is less than the second.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Boolean
      * @param {Number} a
      * @param {Number} b
      * @return {Boolean} a < b
@@ -15525,9 +15675,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns true if the first parameter is less than or equal to the second.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Boolean
      * @param {Number} a
      * @param {Number} b
      * @return {Boolean} a <= b
@@ -15543,9 +15694,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns true if the first parameter is greater than the second.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Boolean
      * @param {Number} a
      * @param {Number} b
      * @return {Boolean} a > b
@@ -15561,9 +15713,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns true if the first parameter is greater than or equal to the second.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig Number -> Number -> Boolean
      * @param {Number} a
      * @param {Number} b
      * @return {Boolean} a >= b
@@ -15579,10 +15732,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Determines the largest of a list of numbers (or elements that can be cast to numbers)
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
-     * @see maxWith
+     * @sig [Number] -> Number
+     * @see R.maxWith
      * @param {Array} list A list of numbers
      * @return {Number} The greatest number in the list
      * @example
@@ -15597,13 +15751,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Determines the largest of a list of items as determined by pairwise comparisons from the supplied comparator
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig (a -> Number) -> [a] -> a
      * @param {Function} keyFn A comparator function for elements in the list
      * @param {Array} list A list of comparable elements
      * @return {*} The greatest element in the list. `undefined` if the list is empty.
-     * @see max
+     * @see R.max
      * @example
      *
      *      function cmp(obj) { return obj.x; }
@@ -15612,7 +15767,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.maxWith = curry2(function _maxWith(keyFn, list) {
         if (!(list && list.length > 0)) {
-           return;
+            return;
         }
         var idx = 0, winner = list[idx], max = keyFn(winner), testKey;
         while (++idx < list.length) {
@@ -15629,12 +15784,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Determines the smallest of a list of items as determined by pairwise comparisons from the supplied comparator
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig (a -> Number) -> [a] -> a
      * @param {Function} keyFn A comparator function for elements in the list
      * @param {Array} list A list of comparable elements
-     * @see min
+     * @see R.min
      * @return {*} The greatest element in the list. `undefined` if the list is empty.
      * @example
      *
@@ -15662,12 +15818,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Determines the smallest of a list of numbers (or elements that can be cast to numbers)
      *
-     * @static
+     * @func
      * @memberOf R
      * @category math
+     * @sig [Number] -> Number
      * @param {Array} list A list of numbers
      * @return {Number} The greatest number in the list
-     * @see minWith
+     * @see R.minWith
      * @example
      *
      *      min([7, 3, 9, 2, 4, 9, 3]) // => 2
@@ -15688,14 +15845,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * returns a subset of a string between one index and another.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig Number -> Number -> String -> String
      * @param {Number} indexA An integer between 0 and the length of the string.
      * @param {Number} indexB An integer between 0 and the length of the string.
      * @param {String} The string to extract from
      * @return {String} the extracted substring
-     * @see invoker
+     * @see R.invoker
      * @example
      *
      *      substring(2, 5, 'abcdefghijklm'); //=> 'cde'
@@ -15706,13 +15864,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The trailing substring of a String starting with the nth character:
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig Number -> String -> String
      * @param {Number} indexA An integer between 0 and the length of the string.
      * @param {String} The string to extract from
      * @return {String} the extracted substring
-     * @see invoker
+     * @see R.invoker
      * @example
      *
      *      substringFrom(8, 'abcdefghijklm'); //=> 'ijklm'
@@ -15723,13 +15882,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The leading substring of a String ending before the nth character:
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig Number -> String -> String
      * @param {Number} indexA An integer between 0 and the length of the string.
      * @param {String} The string to extract from
      * @return {String} the extracted substring
-     * @see invoker
+     * @see R.invoker
      * @example
      *
      *      substringTo(8, 'abcdefghijklm'); //=> 'abcdefgh'
@@ -15740,13 +15900,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The character at the nth position in a String:
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig Number -> String -> String
      * @param {Number} index An integer between 0 and the length of the string.
      * @param {String} str The string to extract a char from
      * @return {String} the character at `index` of `str`
-     * @see invoker
+     * @see R.invoker
      * @example
      *
      *      charAt(8, 'abcdefghijklm'); //=> 'i'
@@ -15757,13 +15918,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The ascii code of the character at the nth position in a String:
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig Number -> String -> Number
      * @param {Number} index An integer between 0 and the length of the string.
      * @param {String} str The string to extract a charCode from
      * @return {Number} the code of the character at `index` of `str`
-     * @see invoker
+     * @see R.invoker
      * @example
      *
      *      charCodeAt(8, 'abcdefghijklm'); //=> 105
@@ -15775,13 +15937,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Tests a regular expression agains a String
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig RegExp -> String -> [String] | null
      * @param {RegExp} rx A regular expression.
      * @param {String} str The string to match against
      * @return {Array} The list of matches, or null if no matches found
-     * @see invoker
+     * @see R.invoker
      * @example
      *
      *      match(/([a-z]a)/g, 'bananas'); //=> ['ba', 'na', 'na']
@@ -15792,13 +15955,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Finds the first index of a substring in a string, returning -1 if it's not present
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig String -> String -> Number
      * @param {String} c A string to find.
      * @param {String} str The string to search in
      * @return {Number} The first index of `c` or -1 if not found
-     * @see invoker
+     * @see R.invoker
      * @example
      *
      *      strIndexOf('c', 'abcdefg) //=> 2
@@ -15810,13 +15974,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * Finds the last index of a substring in a string, returning -1 if it's not present
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig String -> String -> Number
      * @param {String} c A string to find.
      * @param {String} str The string to search in
      * @return {Number} The last index of `c` or -1 if not found
-     * @see invoker
+     * @see R.invoker
      * @example
      *
      *      strLastIndexOf('a', 'banana split') //=> 5
@@ -15827,9 +15992,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The upper case version of a string.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig String -> String
      * @param {string} str The string to upper case.
      * @return {string} The upper case version of `str`.
      * @example
@@ -15842,9 +16008,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The lower case version of a string.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig String -> String
      * @param {string} str The string to lower case.
      * @return {string} The lower case version of `str`.
      * @example
@@ -15858,9 +16025,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Splits a string into an array of strings based on the given
      * separator.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig String -> String -> [String]
      * @param {string} sep The separator string.
      * @param {string} str The string to separate into an array.
      * @return {Array} The array of strings from `str` separated by `str`.
@@ -15906,9 +16074,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Retrieve a nested path on an object seperated by the specified
      * separator value.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig String -> String -> {*} -> *
      * @param {string} sep The separator to use in `path`.
      * @param {string} path The path to use.
      * @return {*} The data at `path`.
@@ -15924,9 +16093,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Retrieve a nested path on an object seperated by periods
      *
-     * @static
+     * @func
      * @memberOf R
      * @category string
+     * @sig String -> {*} -> *
      * @param {string} path The dot path to use.
      * @return {*} The data at `path`.
      * @example
@@ -15948,10 +16118,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Reasonable analog to SQL `select` statement.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category object
      * @category relation
+     * @string [k] -> [{k: v}] -> [{k: v}]
      * @param {Array} props The property names to project
      * @param {Array} objs The objects to query
      * @return {Array} An array of objects with just the `props` properties.
@@ -15970,9 +16141,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * value according to strict equality (`===`).  Most likely used to
      * filter a list:
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig k -> v -> {k: v} -> Boolean
      * @param {string|number} name The property name (or index) to use.
      * @param {*} val The value to compare the property with.
      * @return {boolean} `true` if the properties are equal, `false` otherwise.
@@ -15995,9 +16167,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Combines two lists into a set (i.e. no duplicates) composed of the
      * elements of each list.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig [a] -> [a] -> [a]
      * @param {Array} as The first list.
      * @param {Array} bs The second list.
      * @return {Array} The first and second lists concatenated, with
@@ -16013,15 +16186,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Combines two lists into a set (i.e. no duplicates) composed of the elements of each list.  Duplication is
      * determined according to the value returned by applying the supplied predicate to two list elements.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig (a,a -> Boolean) -> [a] -> [a] -> [a]
      * @param {Function} pred
      * @param {Array} list1 The first list.
      * @param {Array} list2 The second list.
      * @return {Array} The first and second lists concatenated, with
      *         duplicates removed.
-     * @see union
+     * @see R.union
      * @example
      *
      *      function cmp(x, y) { return x.a === y.a; }
@@ -16037,13 +16211,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Finds the set (i.e. no duplicates) of all elements in the first list not contained in the second list.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig [a] -> [a] -> [a]
      * @param {Array} list1 The first list.
      * @param {Array} list2 The second list.
      * @return {Array} The elements in `list1` that are not in `list2`
-     * @see differenceWith
+     * @see R.differenceWith
      * @example
      *
      *      difference([1,2,3,4], [7,6,5,4,3]); //= [1,2]
@@ -16059,15 +16234,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Duplication is determined according to the value returned by applying the supplied predicate to two list
      * elements.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig (a,a -> Boolean) -> [a] -> [a] -> [a]
      * @param {Function} pred
      * @param {Array} list1 The first list.
      * @param {Array} list2 The second list.
-     * @see difference
-     * @return {Array} The first and second lists concatenated, with
-     *                 duplicates removed.
+     * @see R.difference
+     * @return {Array} The elements in `list1` that are not in `list2`
      * @example
      *
      *      function cmp(x, y) { return x.a === y.a; }
@@ -16084,12 +16259,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Combines two lists into a set (i.e. no duplicates) composed of those elements common to both lists.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig [a] -> [a] -> [a]
      * @param {Array} list1 The first list.
      * @param {Array} list2 The second list.
-     * @see intersectionWith
+     * @see R.intersectionWith
      * @return {Array} The list of elements found in both `list1` and `list2`
      * @example
      *
@@ -16106,15 +16282,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * to the value returned by applying the supplied predicate to two list
      * elements.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig (a,a -> Boolean) -> [a] -> [a] -> [a]
      * @param {Function} pred A predicate function that determines whether
      *        the two supplied elements are equal.
      *        Signatrue: a -> a -> Boolean
      * @param {Array} list1 One list of items to compare
      * @param {Array} list2 A second list of items to compare
-     * @see intersection
+     * @see R.intersection
      * @return {Array} A new list containing those elements common to both lists.
      * @example
      *
@@ -16157,7 +16334,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * is the result of applying the supplied function to that item.
      *
      * @private
-     * @static
+     * @func
      * @memberOf R
      * @category relation
      * @param {Function} fn An arbitrary unary function returning a potential
@@ -16196,15 +16373,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Sorts the list according to a key generated by the supplied function.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig (a -> String) -> [a] -> [a]
      * @param {Function} fn The function mapping `list` items to keys.
      * @param {Array} list The list to sort.
      * @return {Array} A new list sorted by the keys generated by `fn`.
      * @example
      *
-     *      var sortByFirstItem = sortBy(nth(0));
+     *      var sortByFirstItem = sortBy(prop(0));
      *      var sortByNameCaseInsensitive = sortBy(compose(toLowerCase, prop('name')));
      *      var pairs = [[-1, 1], [-2, 2], [-3, 3]];
      *      sortByFirstItem(pairs); //= [[-3, 3], [-2, 2], [-1, 1]]
@@ -16235,9 +16413,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * the list. Note that all keys are coerced to strings because of how
      * JavaScript objects work.
      *
-     * @static
+     * @func
      * @memberOf R
      * @category relation
+     * @sig (a -> String) -> [a] -> {*}
      * @param {Function} fn The function used to map values to keys.
      * @param {Array} list The list to count elements from.
      * @return {Object} An object mapping keys to number of occurrences in the list.
@@ -16272,15 +16451,20 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a list of function names of object's own functions
      *
-     * @static .
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {*} -> [String]
      * @param {Object} obj The objects with functions in it
-     * @return {Array} returns list of object's own function names
-     * @example .
+     * @return {Array} returns a list of the object's own properites that map to functions
+     * @example
      *
      *      R.functions(R) // => returns list of ramda's own function names
-     *      R.functions(this) // => returns list of function names in global scope's own function names
+     *
+     *      var F = function() { this.x = function(){}; this.y = 1; }
+     *      F.prototype.z = function() {};
+     *      F.prototype.a = 100;
+     *      R.functions(new F()); // ["x"];
      */
     R.functions = functionsWith(R.keys);
 
@@ -16288,15 +16472,21 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a list of function names of object's own and prototype functions
      *
-     * @static .
+     * @func
      * @memberOf R
      * @category Object
+     * @sig {*} -> [String]
      * @param {Object} obj The objects with functions in it
-     * @return {Array} returns list of object's own and prototype function names
-     * @example .
+     * @return {Array} returns a list of the object's own properites and prototype
+     *                 properties that map to functions
+     * @example
      *
      *      R.functionsIn(R) // => returns list of ramda's own and prototype function names
-     *      R.functionsIn(this) // => returns list of function names in global scope's own and prototype function names
+     *
+     *      var F = function() { this.x = function(){}; this.y = 1; }
+     *      F.prototype.z = function() {};
+     *      F.prototype.a = 100;
+     *      R.functionsIn(new F()); // ["x", "z"];
      */
     R.functionsIn = functionsWith(R.keysIn);
 

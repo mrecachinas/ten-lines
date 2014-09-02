@@ -6,6 +6,17 @@ var ramda   = require('ramda');
 var app     = express();
 var git     = require('gift');
 var blame   = require('./server/blame');
+var config, user, pass;
+
+
+try {
+    config  = require('./config');
+    user = config.gh.username;
+    pass = config.gh.pass;
+} catch(err) {
+    user = 'test';
+    pass = 'test';
+}
 
 
 var Datastore = require('nedb')
@@ -20,7 +31,7 @@ app.get('/repo/:username/:repo', function(req, res) {
     var repo = req.params.repo;
     var id = username + '/' + repo;
 
-    var url = 'https://test:test@github.com/'+id+'.git';
+    var url = 'https://' + user + ':' + pass + '@github.com/'+id+'.git';
     var dir = '/var/tmp/'+repo+'-'+Math.floor(Math.random()*1000000);
 
     repos.findOne({ repo: id }, function (err, doc) {
