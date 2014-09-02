@@ -12,12 +12,12 @@ var config, user, pass;
 try {
     config  = require('./config');
     user = config.gh.username;
-    pass = config.gh.pass;
+    pass = config.gh.password;
 } catch(err) {
+    console.log('failed');
     user = 'test';
     pass = 'test';
 }
-
 
 var Datastore = require('nedb')
 var repos = new Datastore({ filename: './dbs/repos', autoload: true });

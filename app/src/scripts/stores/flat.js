@@ -50,7 +50,14 @@ var FlatStore = Fluxxor.createStore({
                 groupAndSort('date', 'count')
             )(this.flat);
 
-            console.log(last(this.byDate).date);
+
+            console.log('================================');
+            var counts = sum(pluck('count', this.byDate)) / this.byDate.length;
+            console.log('average: ' + counts);
+
+
+
+
 
             this.emit('change');
         });

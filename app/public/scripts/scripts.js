@@ -66,7 +66,7 @@ var cx = React.addons.classSet;
 var XHover = React.createClass({displayName: 'XHover',
     render: function() {
         return this.transferPropsTo(
-            React.DOM.li({className: "x-hover"}, 
+            React.DOM.span({className: "x-hover tooltip-right"}, 
                 this.props.children
             )
         );
@@ -92,10 +92,18 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
         var filtered = this.state.filtered || [];
 
         var files = map(function(obj) {
+
             var filter = actions.addFilter.bind(null, obj.filename);
+            var name = obj.filename.split('/');
+            if (name.length > 1) {
+                name = last(name);
+            }
+
             return (
-                XHover({onClick: filter}, 
-                    obj.filename, ": ", obj.contents.length
+                React.DOM.li(null, 
+                    XHover({onClick: filter, 'data-tooltip': obj.filename}, 
+                        name, ": ", obj.contents.length
+                    )
                 )
             );
         }, filtered);
@@ -110,8 +118,10 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
             var filter = actions.addExtension.bind(null, ext);
 
             return (
-                XHover({onClick: filter}, 
-                    "*.", ext
+                React.DOM.li(null, 
+                    XHover({onClick: filter}, 
+                        "*.", ext
+                    )
                 )
             );
         }, extensions);
@@ -473,7 +483,14 @@ var FlatStore = Fluxxor.createStore({
                 groupAndSort('date', 'count')
             )(this.flat);
 
-            console.log(last(this.byDate).date);
+
+            console.log('================================');
+            var counts = sum(pluck('count', this.byDate)) / this.byDate.length;
+            console.log('average: ' + counts);
+
+
+
+
 
             this.emit('change');
         });

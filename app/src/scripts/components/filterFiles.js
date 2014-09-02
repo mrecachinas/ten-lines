@@ -11,9 +11,9 @@ var cx = React.addons.classSet;
 var XHover = React.createClass({
     render: function() {
         return this.transferPropsTo(
-            <li className="x-hover">
+            <span className="x-hover tooltip-right">
                 {this.props.children}
-            </li>
+            </span>
         );
     }
 });
@@ -37,11 +37,19 @@ var FilterFiles = React.createClass({
         var filtered = this.state.filtered || [];
 
         var files = map(function(obj) {
+
             var filter = actions.addFilter.bind(null, obj.filename);
+            var name = obj.filename.split('/');
+            if (name.length > 1) {
+                name = last(name);
+            }
+
             return (
-                <XHover onClick={filter}>
-                    {obj.filename}: {obj.contents.length}
-                </XHover>
+                <li>
+                    <XHover onClick={filter} data-tooltip={obj.filename}>
+                        {name}: {obj.contents.length}
+                    </XHover>
+                </li>
             );
         }, filtered);
 
@@ -55,9 +63,11 @@ var FilterFiles = React.createClass({
             var filter = actions.addExtension.bind(null, ext);
 
             return (
-                <XHover onClick={filter}>
-                    *.{ext}
-                </XHover>
+                <li>
+                    <XHover onClick={filter}>
+                        *.{ext}
+                    </XHover>
+                </li>
             );
         }, extensions);
 
