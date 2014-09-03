@@ -10,7 +10,6 @@ Repo.prototype.setData = function(data) {
     this.files = pluck('filename', this.data);
     this.flat = compose(flatten, pluck('contents'))(this.data);
 
-
     // Helpers
     var dates = groupBy(prop('date'));
     var users = groupBy(prop('username'));

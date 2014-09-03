@@ -31,6 +31,11 @@ var FilterFiles = React.createClass({
         this.getFlux().actions.filter.userFilter(username);
     },
 
+    filterSize: function(e) {
+        var size = e.target.value;
+        this.getFlux().actions.filter.sizeFilter(size);
+    },
+
     render: function() {
         var self = this;
         var actions = self.getFlux().actions.filter;
@@ -52,7 +57,7 @@ var FilterFiles = React.createClass({
             );
         }, filtered);
 
-        var upperLimit = max(pluck('contents', this.state.filtered));
+        var upperLimit = max(map(size, pluck('contents', this.state.filtered)));
         var step = upperLimit / 100;
 
 
@@ -88,14 +93,14 @@ var FilterFiles = React.createClass({
                     onKeyPress={this.filterName} />
 
                 <h2>File Size</h2>
-                0
                 <input
                     type="range"
-                    min="0"
+                    min="1"
+                    value={this.state.fileSize}
                     max={upperLimit}
                     step={step}
-                     />
-                {upperLimit}
+                    onMouseUp={this.filterSize} />
+                {this.state.fileSize}
 
                 <h2>Extensions</h2>
                 <ul> {extensions} </ul>

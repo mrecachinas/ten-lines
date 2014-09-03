@@ -12,6 +12,7 @@ var FilterStore = Fluxxor.createStore({
         'FILTER:FILE': 'fileFilter',
         'FILTER:USER': 'userFilter',
         'FILTER:EXTENSION': 'extensionFilter',
+        'FILTER:SIZE': 'sizeFilter',
         'FILTER:RESET': 'resetFilter'
     },
 
@@ -19,6 +20,7 @@ var FilterStore = Fluxxor.createStore({
         this.files = [];
         this.filtered = [];
         this.extensions = [];
+        this.fileSize = false;
         this.username = false;
     },
 
@@ -40,6 +42,14 @@ var FilterStore = Fluxxor.createStore({
             // Filter based on the files the user selected
             var regs = map(function(file) { return new RegExp('\\.' + file + '$'); }, this.extensions);
             this.filtered = reject(reduceOrRegExp(regs), this.filtered);
+
+            // Filter based on the file size
+            var fileSize = this.fileSize;
+            if (fileSize) {
+                this.filtered = reject(function(file) {
+                    return file.contents.length > fileSize;
+                }, this.filtered);
+            }
 
             // Filter based on the username
             var nameFilter = this.username
@@ -80,6 +90,12 @@ var FilterStore = Fluxxor.createStore({
         this.filter();
     },
 
+    sizeFilter: function(payload) {
+        if (!payload.fileSize) { return; }
+        this.fileSize = payload.fileSize;
+        this.filter();
+    },
+
     extensionFilter: function(payload) {
         if (!payload.ext) { return; }
         this.extensions = union(this.extensions, [payload.ext]);
@@ -99,7 +115,7 @@ var FilterStore = Fluxxor.createStore({
 
         return compose(
             mixin({active: active}),
-            pick(['filtered', 'active'])
+            pick(['filtered', 'active', 'username', 'fileSize'])
         )(this);
     }
 });
@@ -123,6 +139,10 @@ var actions = {
     },
     addExtension: function(ext) {
         this.dispatch('FILTER:EXTENSION', {ext: ext});
+        this.dispatch('FILTER:UPDATED');
+    },
+    sizeFilter: function(fileSize) {
+        this.dispatch('FILTER:SIZE', {fileSize: fileSize});
         this.dispatch('FILTER:UPDATED');
     }
 };
