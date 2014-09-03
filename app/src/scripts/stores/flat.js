@@ -27,6 +27,9 @@ var FlatStore = Fluxxor.createStore({
     initialize: function() {
         this.flat = [];
         this.byUser = [];
+        this.average = 0;
+        this.median = 0;
+        this.mean = 0;
     },
 
     update: function() {
@@ -51,12 +54,11 @@ var FlatStore = Fluxxor.createStore({
             )(this.flat);
 
 
-            console.log('================================');
-            var counts = sum(pluck('count', this.byDate)) / this.byDate.length;
-            console.log('average: ' + counts);
+            var len = this.byDate.length;
+            var middle = Math.floor(len/2);
 
-
-
+            this.average = sum(pluck('count', this.byDate)) / this.byDate.length;
+            this.median = compose(last, take(middle), pluck('count'), sortBy(prop('count')))(this.byDate);
 
 
             this.emit('change');
@@ -67,7 +69,7 @@ var FlatStore = Fluxxor.createStore({
     // Expose our state via this method (for read only protection)
     getState: function() {
         return compose(
-            pick(['flat', 'byUser', 'byDate'])
+            pick(['flat', 'byUser', 'byDate', 'average', 'median'])
         )(this);
     }
 });

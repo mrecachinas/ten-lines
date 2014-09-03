@@ -7,6 +7,7 @@ var FluxChildMixin = Fluxxor.FluxChildMixin(React);
 
 var Filters = require('./components/filterFiles');
 var TopContributors = require('./components/topContribs');
+var GeneralStats = require('./components/generalStats');
 
 var RepoView  = React.createClass({
     mixins: [FluxChildMixin],
@@ -20,6 +21,7 @@ var RepoView  = React.createClass({
                 </div>
                 <div className="half">
                     <TopContributors />
+                    <GeneralStats />
                 </div>
             </div>
         );

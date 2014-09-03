@@ -52,7 +52,7 @@ var FetchRepo = React.createClass({displayName: 'FetchRepo',
 
 module.exports = FetchRepo;
 
-},{"fluxxor":16,"react":234}],2:[function(require,module,exports){
+},{"fluxxor":18,"react":236}],2:[function(require,module,exports){
 
 /** @jsx React.DOM */
 
@@ -92,7 +92,6 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
         var filtered = this.state.filtered || [];
 
         var files = map(function(obj) {
-
             var filter = actions.addFilter.bind(null, obj.filename);
             var name = obj.filename.split('/');
             if (name.length > 1) {
@@ -107,6 +106,9 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
                 )
             );
         }, filtered);
+
+        var upperLimit = max(pluck('contents', this.state.filtered));
+        var step = upperLimit / 100;
 
 
         var extensions = compose(
@@ -128,18 +130,32 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
 
         return (
             React.DOM.div(null, 
-                React.DOM.h2(null, "Filters"), 
+                React.DOM.h1(null, "Filters"), 
+                self.state.active
+                    ? React.DOM.strong({onClick: actions.resetFilters}, "reset")
+                    : React.DOM.span({onClick: actions.resetFilters}, "reset"), 
+
+                React.DOM.h2(null, "Username"), 
                 React.DOM.input({
                     type: "text", 
                     placeholder: "username", 
                     value: this.state.username, 
                     onKeyPress: this.filterName}), 
 
-                self.state.active
-                    ? React.DOM.strong({onClick: actions.resetFilters}, "reset")
-                    : React.DOM.span({onClick: actions.resetFilters}, "reset"), 
+                React.DOM.h2(null, "File Size"), 
+                "0", 
+                React.DOM.input({
+                    type: "range", 
+                    min: "0", 
+                    max: upperLimit, 
+                    step: step}
+                     ), 
+                max, 
 
+                React.DOM.h2(null, "Extensions"), 
                 React.DOM.ul(null, " ", extensions, " "), 
+
+                React.DOM.h2(null, "Files"), 
                 React.DOM.ul(null, " ", files, " ")
             )
         );
@@ -148,7 +164,58 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
 
 module.exports = FilterFiles;
 
-},{"fluxxor":16,"react/addons":75}],3:[function(require,module,exports){
+},{"fluxxor":18,"react/addons":77}],3:[function(require,module,exports){
+/** @jsx React.DOM */
+
+var React = require('react/addons');
+var Fluxxor = require('fluxxor');
+var FluxChildMixin = Fluxxor.FluxChildMixin(React);
+var StoreWatchMixin = Fluxxor.StoreWatchMixin('FlatStore');
+var cx = React.addons.classSet;
+var Percent = require('./percent');
+
+
+var FilterFiles = React.createClass({displayName: 'FilterFiles',
+    mixins: [FluxChildMixin, StoreWatchMixin],
+
+    getStateFromFlux: function() {
+        return this.getFlux().store('FlatStore').getState();
+    },
+
+    render: function() {
+        return (
+            React.DOM.div(null, 
+                React.DOM.h1(null, " Get Mathed "), 
+                React.DOM.small(null, "Lines of code per day"), 
+
+                React.DOM.p(null, " Average: ", Math.round(this.state.average), " "), 
+                React.DOM.p(null, " Median: ", Math.round(this.state.median), " ")
+            )
+        );
+    }
+});
+
+module.exports = FilterFiles;
+
+},{"./percent":4,"fluxxor":18,"react/addons":77}],4:[function(require,module,exports){
+/** @jsx React.DOM */
+
+var React = require('react/addons');
+
+var Percent = React.createClass({displayName: 'Percent',
+    render: function() {
+        var val = (''+this.props.val).substring(0, 5);
+        return (
+            React.DOM.span(null, 
+                val, "%"
+            )
+        );
+    }
+});
+
+module.exports = Percent;
+
+},{"react/addons":77}],5:[function(require,module,exports){
 
 /** @jsx React.DOM */
 
@@ -157,6 +224,7 @@ var Fluxxor = require('fluxxor');
 var FluxChildMixin = Fluxxor.FluxChildMixin(React);
 var StoreWatchMixin = Fluxxor.StoreWatchMixin('FlatStore');
 var cx = React.addons.classSet;
+var Percent = require('./percent');
 
 
 var UserPercent = React.createClass({displayName: 'UserPercent',
@@ -167,7 +235,7 @@ var UserPercent = React.createClass({displayName: 'UserPercent',
             React.DOM.div(null, 
                 React.DOM.strong(null, this.props.user.username), 
                 ":", 
-                React.DOM.strong(null, this.props.user.percent)
+                Percent({val: this.props.user.percent})
             )
         );
     }
@@ -185,7 +253,10 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
 
         return (
             React.DOM.div(null, 
-                React.DOM.h1(null, "Top Contributor"), 
+                React.DOM.div(null, 
+                    React.DOM.h1(null, "Top Contributor"), 
+                    React.DOM.small(null, "% of lines owned in the project")
+                ), 
 
                 React.DOM.div({className: "half"}, 
                     UserPercent({user: head(topFive)})
@@ -204,7 +275,7 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
 
 module.exports = FilterFiles;
 
-},{"fluxxor":16,"react/addons":75}],4:[function(require,module,exports){
+},{"./percent":4,"fluxxor":18,"react/addons":77}],6:[function(require,module,exports){
 /** @jsx React.DOM */
 
 
@@ -214,6 +285,7 @@ var FluxChildMixin = Fluxxor.FluxChildMixin(React);
 
 var Filters = require('./components/filterFiles');
 var TopContributors = require('./components/topContribs');
+var GeneralStats = require('./components/generalStats');
 
 var RepoView  = React.createClass({displayName: 'RepoView',
     mixins: [FluxChildMixin],
@@ -226,7 +298,8 @@ var RepoView  = React.createClass({displayName: 'RepoView',
                     Filters(null)
                 ), 
                 React.DOM.div({className: "half"}, 
-                    TopContributors(null)
+                    TopContributors(null), 
+                    GeneralStats(null)
                 )
             )
         );
@@ -235,7 +308,7 @@ var RepoView  = React.createClass({displayName: 'RepoView',
 
 module.exports = RepoView;
 
-},{"./components/filterFiles":2,"./components/topContribs":3,"fluxxor":16,"react":234}],5:[function(require,module,exports){
+},{"./components/filterFiles":2,"./components/generalStats":3,"./components/topContribs":5,"fluxxor":18,"react":236}],7:[function(require,module,exports){
 /** @jsx React.DOM */
 
 // Install Ramda to the global namespace first so all scripts can use it
@@ -291,7 +364,7 @@ React.renderComponent(
 );
 
 
-},{"./components/fetchRepo":1,"./repoView":4,"./stores/store":9,"fluxxor":16,"ramda":74,"react":234}],6:[function(require,module,exports){
+},{"./components/fetchRepo":1,"./repoView":6,"./stores/store":11,"fluxxor":18,"ramda":76,"react":236}],8:[function(require,module,exports){
 var _ = require('ramda');
 var Fluxxor = require('fluxxor');
 var superagent = require('superagent');
@@ -430,7 +503,7 @@ module.exports = {
     actions: {filter: actions}
 };
 
-},{"fluxxor":16,"ramda":74,"superagent":235}],7:[function(require,module,exports){
+},{"fluxxor":18,"ramda":76,"superagent":237}],9:[function(require,module,exports){
 var Fluxxor = require('fluxxor');
 var _ = require('../utils');
 
@@ -460,6 +533,9 @@ var FlatStore = Fluxxor.createStore({
     initialize: function() {
         this.flat = [];
         this.byUser = [];
+        this.average = 0;
+        this.median = 0;
+        this.mean = 0;
     },
 
     update: function() {
@@ -484,12 +560,11 @@ var FlatStore = Fluxxor.createStore({
             )(this.flat);
 
 
-            console.log('================================');
-            var counts = sum(pluck('count', this.byDate)) / this.byDate.length;
-            console.log('average: ' + counts);
+            var len = this.byDate.length;
+            var middle = Math.floor(len/2);
 
-
-
+            this.average = sum(pluck('count', this.byDate)) / this.byDate.length;
+            this.median = compose(last, take(middle), pluck('count'), sortBy(prop('count')))(this.byDate);
 
 
             this.emit('change');
@@ -500,7 +575,7 @@ var FlatStore = Fluxxor.createStore({
     // Expose our state via this method (for read only protection)
     getState: function() {
         return compose(
-            pick(['flat', 'byUser', 'byDate'])
+            pick(['flat', 'byUser', 'byDate', 'average', 'median'])
         )(this);
     }
 });
@@ -524,7 +599,7 @@ module.exports = {
     actions: {flat: actions}
 };
 
-},{"../utils":10,"fluxxor":16}],8:[function(require,module,exports){
+},{"../utils":12,"fluxxor":18}],10:[function(require,module,exports){
 var _ = require('ramda');
 var Fluxxor = require('fluxxor');
 var superagent = require('superagent');
@@ -614,7 +689,7 @@ module.exports = {
     actions: {repo: actions}
 };
 
-},{"fluxxor":16,"lodash":73,"ramda":74,"superagent":235}],9:[function(require,module,exports){
+},{"fluxxor":18,"lodash":75,"ramda":76,"superagent":237}],11:[function(require,module,exports){
 var _ = require('lodash');
 var Fluxxor = require('fluxxor');
 
@@ -629,7 +704,7 @@ var actions = _.extend.apply(_, _.pluck(data, 'actions'));
 
 module.exports = new Fluxxor.Flux(stores, actions);
 
-},{"./filters":6,"./flat":7,"./repo":8,"fluxxor":16,"lodash":73}],10:[function(require,module,exports){
+},{"./filters":8,"./flat":9,"./repo":10,"fluxxor":18,"lodash":75}],12:[function(require,module,exports){
 
 var exports = module.exports = {};
 
@@ -645,7 +720,7 @@ exports.toPairsObj = function(key, value) {
     };
 };
 
-},{}],11:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -948,7 +1023,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],12:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -973,7 +1048,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],13:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -1028,14 +1103,14 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 
-},{}],14:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],15:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -1625,7 +1700,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"),typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":14,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13,"inherits":12}],16:[function(require,module,exports){
+},{"./support/isBuffer":16,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15,"inherits":14}],18:[function(require,module,exports){
 var Dispatcher = require("./lib/dispatcher"),
     Flux = require("./lib/flux"),
     FluxMixin = require("./lib/flux_mixin"),
@@ -1645,7 +1720,7 @@ var Fluxxor = {
 
 module.exports = Fluxxor;
 
-},{"./lib/create_store":17,"./lib/dispatcher":18,"./lib/flux":19,"./lib/flux_child_mixin":20,"./lib/flux_mixin":21,"./lib/store_watch_mixin":23,"./version":72}],17:[function(require,module,exports){
+},{"./lib/create_store":19,"./lib/dispatcher":20,"./lib/flux":21,"./lib/flux_child_mixin":22,"./lib/flux_mixin":23,"./lib/store_watch_mixin":25,"./version":74}],19:[function(require,module,exports){
 var _each = require("lodash-node/modern/collections/forEach"),
     Store = require("./store"),
     util = require("util");
@@ -1686,7 +1761,7 @@ var createStore = function(spec) {
 
 module.exports = createStore;
 
-},{"./store":22,"lodash-node/modern/collections/forEach":26,"util":15}],18:[function(require,module,exports){
+},{"./store":24,"lodash-node/modern/collections/forEach":28,"util":17}],20:[function(require,module,exports){
 var _clone = require("lodash-node/modern/objects/clone"),
     _mapValues = require("lodash-node/modern/objects/mapValues"),
     _forOwn = require("lodash-node/modern/objects/forOwn"),
@@ -1813,7 +1888,7 @@ Dispatcher.prototype.waitForStores = function(store, stores, fn) {
 
 module.exports = Dispatcher;
 
-},{"lodash-node/modern/arrays/intersection":24,"lodash-node/modern/arrays/uniq":25,"lodash-node/modern/collections/forEach":26,"lodash-node/modern/collections/map":27,"lodash-node/modern/collections/size":28,"lodash-node/modern/objects/clone":58,"lodash-node/modern/objects/findKey":59,"lodash-node/modern/objects/forOwn":61,"lodash-node/modern/objects/keys":66,"lodash-node/modern/objects/mapValues":67}],19:[function(require,module,exports){
+},{"lodash-node/modern/arrays/intersection":26,"lodash-node/modern/arrays/uniq":27,"lodash-node/modern/collections/forEach":28,"lodash-node/modern/collections/map":29,"lodash-node/modern/collections/size":30,"lodash-node/modern/objects/clone":60,"lodash-node/modern/objects/findKey":61,"lodash-node/modern/objects/forOwn":63,"lodash-node/modern/objects/keys":68,"lodash-node/modern/objects/mapValues":69}],21:[function(require,module,exports){
 var Dispatcher = require("./dispatcher");
 
 function bindActions(target, actions, dispatchBinder) {
@@ -1856,7 +1931,7 @@ Flux.prototype.store = function(name) {
 
 module.exports = Flux;
 
-},{"./dispatcher":18}],20:[function(require,module,exports){
+},{"./dispatcher":20}],22:[function(require,module,exports){
 var FluxChildMixin = function(React) {
   return {
     contextTypes: {
@@ -1876,7 +1951,7 @@ FluxChildMixin.componentWillMount = function() {
 
 module.exports = FluxChildMixin;
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 var FluxMixin = function(React) {
   return {
     propTypes: {
@@ -1906,7 +1981,7 @@ FluxMixin.componentWillMount = function() {
 
 module.exports = FluxMixin;
 
-},{}],22:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var EventEmitter = require("events").EventEmitter,
     util = require("util");
 
@@ -1949,7 +2024,7 @@ Store.prototype.waitFor = function(stores, fn) {
 
 module.exports = Store;
 
-},{"events":11,"util":15}],23:[function(require,module,exports){
+},{"events":13,"util":17}],25:[function(require,module,exports){
 var _each = require("lodash-node/modern/collections/forEach");
 
 var StoreWatchMixin = function() {
@@ -1989,7 +2064,7 @@ StoreWatchMixin.componentWillMount = function() {
 
 module.exports = StoreWatchMixin;
 
-},{"lodash-node/modern/collections/forEach":26}],24:[function(require,module,exports){
+},{"lodash-node/modern/collections/forEach":28}],26:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2074,7 +2149,7 @@ function intersection() {
 
 module.exports = intersection;
 
-},{"../internals/baseIndexOf":37,"../internals/cacheIndexOf":40,"../internals/createCache":42,"../internals/getArray":44,"../internals/largeArraySize":48,"../internals/releaseArray":52,"../internals/releaseObject":53,"../objects/isArguments":62,"../objects/isArray":63}],25:[function(require,module,exports){
+},{"../internals/baseIndexOf":39,"../internals/cacheIndexOf":42,"../internals/createCache":44,"../internals/getArray":46,"../internals/largeArraySize":50,"../internals/releaseArray":54,"../internals/releaseObject":55,"../objects/isArguments":64,"../objects/isArray":65}],27:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2145,7 +2220,7 @@ function uniq(array, isSorted, callback, thisArg) {
 
 module.exports = uniq;
 
-},{"../functions/createCallback":30,"../internals/baseUniq":39}],26:[function(require,module,exports){
+},{"../functions/createCallback":32,"../internals/baseUniq":41}],28:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2202,7 +2277,7 @@ function forEach(collection, callback, thisArg) {
 
 module.exports = forEach;
 
-},{"../internals/baseCreateCallback":35,"../objects/forOwn":61}],27:[function(require,module,exports){
+},{"../internals/baseCreateCallback":37,"../objects/forOwn":63}],29:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2274,7 +2349,7 @@ function map(collection, callback, thisArg) {
 
 module.exports = map;
 
-},{"../functions/createCallback":30,"../objects/forOwn":61}],28:[function(require,module,exports){
+},{"../functions/createCallback":32,"../objects/forOwn":63}],30:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2312,7 +2387,7 @@ function size(collection) {
 
 module.exports = size;
 
-},{"../objects/keys":66}],29:[function(require,module,exports){
+},{"../objects/keys":68}],31:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2354,7 +2429,7 @@ function bind(func, thisArg) {
 
 module.exports = bind;
 
-},{"../internals/createWrapper":43,"../internals/slice":56}],30:[function(require,module,exports){
+},{"../internals/createWrapper":45,"../internals/slice":58}],32:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2437,7 +2512,7 @@ function createCallback(func, thisArg, argCount) {
 
 module.exports = createCallback;
 
-},{"../internals/baseCreateCallback":35,"../internals/baseIsEqual":38,"../objects/isObject":65,"../objects/keys":66,"../utilities/property":71}],31:[function(require,module,exports){
+},{"../internals/baseCreateCallback":37,"../internals/baseIsEqual":40,"../objects/isObject":67,"../objects/keys":68,"../utilities/property":73}],33:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2452,7 +2527,7 @@ var arrayPool = [];
 
 module.exports = arrayPool;
 
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2516,7 +2591,7 @@ function baseBind(bindData) {
 
 module.exports = baseBind;
 
-},{"../objects/isObject":65,"./baseCreate":34,"./setBindData":54,"./slice":56}],33:[function(require,module,exports){
+},{"../objects/isObject":67,"./baseCreate":36,"./setBindData":56,"./slice":58}],35:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2670,7 +2745,7 @@ function baseClone(value, isDeep, callback, stackA, stackB) {
 
 module.exports = baseClone;
 
-},{"../collections/forEach":26,"../objects/assign":57,"../objects/forOwn":61,"../objects/isArray":63,"../objects/isObject":65,"./getArray":44,"./releaseArray":52,"./slice":56}],34:[function(require,module,exports){
+},{"../collections/forEach":28,"../objects/assign":59,"../objects/forOwn":63,"../objects/isArray":65,"../objects/isObject":67,"./getArray":46,"./releaseArray":54,"./slice":58}],36:[function(require,module,exports){
 (function (global){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
@@ -2716,7 +2791,7 @@ if (!nativeCreate) {
 module.exports = baseCreate;
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../objects/isObject":65,"../utilities/noop":70,"./isNative":46}],35:[function(require,module,exports){
+},{"../objects/isObject":67,"../utilities/noop":72,"./isNative":48}],37:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2798,7 +2873,7 @@ function baseCreateCallback(func, thisArg, argCount) {
 
 module.exports = baseCreateCallback;
 
-},{"../functions/bind":29,"../support":68,"../utilities/identity":69,"./setBindData":54}],36:[function(require,module,exports){
+},{"../functions/bind":31,"../support":70,"../utilities/identity":71,"./setBindData":56}],38:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2878,7 +2953,7 @@ function baseCreateWrapper(bindData) {
 
 module.exports = baseCreateWrapper;
 
-},{"../objects/isObject":65,"./baseCreate":34,"./setBindData":54,"./slice":56}],37:[function(require,module,exports){
+},{"../objects/isObject":67,"./baseCreate":36,"./setBindData":56,"./slice":58}],39:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -2912,7 +2987,7 @@ function baseIndexOf(array, value, fromIndex) {
 
 module.exports = baseIndexOf;
 
-},{}],38:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3123,7 +3198,7 @@ function baseIsEqual(a, b, callback, isWhere, stackA, stackB) {
 
 module.exports = baseIsEqual;
 
-},{"../objects/forIn":60,"../objects/isFunction":64,"./getArray":44,"./objectTypes":51,"./releaseArray":52}],39:[function(require,module,exports){
+},{"../objects/forIn":62,"../objects/isFunction":66,"./getArray":46,"./objectTypes":53,"./releaseArray":54}],41:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3189,7 +3264,7 @@ function baseUniq(array, isSorted, callback) {
 
 module.exports = baseUniq;
 
-},{"./baseIndexOf":37,"./cacheIndexOf":40,"./createCache":42,"./getArray":44,"./largeArraySize":48,"./releaseArray":52,"./releaseObject":53}],40:[function(require,module,exports){
+},{"./baseIndexOf":39,"./cacheIndexOf":42,"./createCache":44,"./getArray":46,"./largeArraySize":50,"./releaseArray":54,"./releaseObject":55}],42:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3230,7 +3305,7 @@ function cacheIndexOf(cache, value) {
 
 module.exports = cacheIndexOf;
 
-},{"./baseIndexOf":37,"./keyPrefix":47}],41:[function(require,module,exports){
+},{"./baseIndexOf":39,"./keyPrefix":49}],43:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3270,7 +3345,7 @@ function cachePush(value) {
 
 module.exports = cachePush;
 
-},{"./keyPrefix":47}],42:[function(require,module,exports){
+},{"./keyPrefix":49}],44:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3317,7 +3392,7 @@ function createCache(array) {
 
 module.exports = createCache;
 
-},{"./cachePush":41,"./getObject":45,"./releaseObject":53}],43:[function(require,module,exports){
+},{"./cachePush":43,"./getObject":47,"./releaseObject":55}],45:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3425,7 +3500,7 @@ function createWrapper(func, bitmask, partialArgs, partialRightArgs, thisArg, ar
 
 module.exports = createWrapper;
 
-},{"../objects/isFunction":64,"./baseBind":32,"./baseCreateWrapper":36,"./slice":56}],44:[function(require,module,exports){
+},{"../objects/isFunction":66,"./baseBind":34,"./baseCreateWrapper":38,"./slice":58}],46:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3448,7 +3523,7 @@ function getArray() {
 
 module.exports = getArray;
 
-},{"./arrayPool":31}],45:[function(require,module,exports){
+},{"./arrayPool":33}],47:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3485,7 +3560,7 @@ function getObject() {
 
 module.exports = getObject;
 
-},{"./objectPool":50}],46:[function(require,module,exports){
+},{"./objectPool":52}],48:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3521,7 +3596,7 @@ function isNative(value) {
 
 module.exports = isNative;
 
-},{}],47:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3536,7 +3611,7 @@ var keyPrefix = +new Date + '';
 
 module.exports = keyPrefix;
 
-},{}],48:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3551,7 +3626,7 @@ var largeArraySize = 75;
 
 module.exports = largeArraySize;
 
-},{}],49:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3566,7 +3641,7 @@ var maxPoolSize = 40;
 
 module.exports = maxPoolSize;
 
-},{}],50:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3581,7 +3656,7 @@ var objectPool = [];
 
 module.exports = objectPool;
 
-},{}],51:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3603,7 +3678,7 @@ var objectTypes = {
 
 module.exports = objectTypes;
 
-},{}],52:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3630,7 +3705,7 @@ function releaseArray(array) {
 
 module.exports = releaseArray;
 
-},{"./arrayPool":31,"./maxPoolSize":49}],53:[function(require,module,exports){
+},{"./arrayPool":33,"./maxPoolSize":51}],55:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3661,7 +3736,7 @@ function releaseObject(object) {
 
 module.exports = releaseObject;
 
-},{"./maxPoolSize":49,"./objectPool":50}],54:[function(require,module,exports){
+},{"./maxPoolSize":51,"./objectPool":52}],56:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3706,7 +3781,7 @@ var setBindData = !defineProperty ? noop : function(func, value) {
 
 module.exports = setBindData;
 
-},{"../utilities/noop":70,"./isNative":46}],55:[function(require,module,exports){
+},{"../utilities/noop":72,"./isNative":48}],57:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3746,7 +3821,7 @@ var shimKeys = function(object) {
 
 module.exports = shimKeys;
 
-},{"./objectTypes":51}],56:[function(require,module,exports){
+},{"./objectTypes":53}],58:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3786,7 +3861,7 @@ function slice(array, start, end) {
 
 module.exports = slice;
 
-},{}],57:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3858,7 +3933,7 @@ var assign = function(object, source, guard) {
 
 module.exports = assign;
 
-},{"../internals/baseCreateCallback":35,"../internals/objectTypes":51,"./keys":66}],58:[function(require,module,exports){
+},{"../internals/baseCreateCallback":37,"../internals/objectTypes":53,"./keys":68}],60:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3923,7 +3998,7 @@ function clone(value, isDeep, callback, thisArg) {
 
 module.exports = clone;
 
-},{"../internals/baseClone":33,"../internals/baseCreateCallback":35}],59:[function(require,module,exports){
+},{"../internals/baseClone":35,"../internals/baseCreateCallback":37}],61:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -3990,7 +4065,7 @@ function findKey(object, callback, thisArg) {
 
 module.exports = findKey;
 
-},{"../functions/createCallback":30,"./forOwn":61}],60:[function(require,module,exports){
+},{"../functions/createCallback":32,"./forOwn":63}],62:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4046,7 +4121,7 @@ var forIn = function(collection, callback, thisArg) {
 
 module.exports = forIn;
 
-},{"../internals/baseCreateCallback":35,"../internals/objectTypes":51}],61:[function(require,module,exports){
+},{"../internals/baseCreateCallback":37,"../internals/objectTypes":53}],63:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4098,7 +4173,7 @@ var forOwn = function(collection, callback, thisArg) {
 
 module.exports = forOwn;
 
-},{"../internals/baseCreateCallback":35,"../internals/objectTypes":51,"./keys":66}],62:[function(require,module,exports){
+},{"../internals/baseCreateCallback":37,"../internals/objectTypes":53,"./keys":68}],64:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4140,7 +4215,7 @@ function isArguments(value) {
 
 module.exports = isArguments;
 
-},{}],63:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4187,7 +4262,7 @@ var isArray = nativeIsArray || function(value) {
 
 module.exports = isArray;
 
-},{"../internals/isNative":46}],64:[function(require,module,exports){
+},{"../internals/isNative":48}],66:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4216,7 +4291,7 @@ function isFunction(value) {
 
 module.exports = isFunction;
 
-},{}],65:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4257,7 +4332,7 @@ function isObject(value) {
 
 module.exports = isObject;
 
-},{"../internals/objectTypes":51}],66:[function(require,module,exports){
+},{"../internals/objectTypes":53}],68:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4295,7 +4370,7 @@ var keys = !nativeKeys ? shimKeys : function(object) {
 
 module.exports = keys;
 
-},{"../internals/isNative":46,"../internals/shimKeys":55,"./isObject":65}],67:[function(require,module,exports){
+},{"../internals/isNative":48,"../internals/shimKeys":57,"./isObject":67}],69:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4355,7 +4430,7 @@ function mapValues(object, callback, thisArg) {
 
 module.exports = mapValues;
 
-},{"../functions/createCallback":30,"./forOwn":61}],68:[function(require,module,exports){
+},{"../functions/createCallback":32,"./forOwn":63}],70:[function(require,module,exports){
 (function (global){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
@@ -4399,7 +4474,7 @@ support.funcNames = typeof Function.name == 'string';
 module.exports = support;
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./internals/isNative":46}],69:[function(require,module,exports){
+},{"./internals/isNative":48}],71:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4429,7 +4504,7 @@ function identity(value) {
 
 module.exports = identity;
 
-},{}],70:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4457,7 +4532,7 @@ function noop() {
 
 module.exports = noop;
 
-},{}],71:[function(require,module,exports){
+},{}],73:[function(require,module,exports){
 /**
  * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
  * Build: `lodash modularize modern exports="node" -o ./modern/`
@@ -4499,9 +4574,9 @@ function property(key) {
 
 module.exports = property;
 
-},{}],72:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux architecture tools for React","repository":{"type":"git","url":"https://github.com/BinaryMuse/fluxxor.git"},"main":"index.js","scripts":{"test":"npm run jshint && mocha --recursive","jshint":"jsxhint lib/ test/","build":"./script/build-fluxxor && ./script/build-examples","preview-site":"wintersmith preview -C site","build-site":"wintersmith build -C site"},"keywords":["react","flux"],"author":"Brandon Tilley <brandon@brandontilley.com>","license":"MIT","devDependencies":{"chai":"^1.9.1","css-loader":"^0.6.12","envify":"^1.2.1","jsdom":"^0.10.5","json-loader":"^0.5.0","jsx-loader":"^0.10.2","jsxhint":"^0.4.9","less":"^1.7.0","less-loader":"^0.7.3","mocha":"^1.18.2","react":"^0.10.0","sinon":"^1.9.1","sinon-chai":"^2.5.0","style-loader":"^0.6.3","webpack":"^1.1.11","webpack-dev-server":"^1.2.7","wintersmith":"^2.0.10","wintersmith-ejs":"^0.1.4","wintersmith-less":"^0.2.2"},"dependencies":{"lodash-node":"^2.4.1"},"jshintConfig":{"camelcase":true,"curly":true,"eqeqeq":true,"forin":true,"latedef":true,"newcap":false,"undef":true,"unused":true,"trailing":true,"node":true,"browser":true,"predef":["it","describe","beforeEach","afterEach"]}}
-},{}],73:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -11290,9 +11365,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 }.call(this));
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],74:[function(require,module,exports){
+},{}],76:[function(require,module,exports){
 //     ramda.js
-//     "version": "0.4.2"
+//     "version": "0.4.0"
 //     https://github.com/CrossEye/ramda
 //     (c) 2013-2014 Scott Sauyet and Michael Hurley
 //     Ramda may be freely distributed under the MIT license.
@@ -11309,15 +11384,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 //
 //  [umd]: https://github.com/umdjs/umd/blob/master/returnExports.js
 
-(function(factory) {
+(function (factory) {
     if (typeof exports === 'object') {
         module.exports = factory(this);
     } else if (typeof define === 'function' && define.amd) {
         define(factory);
     } else {
-        this.R = this.ramda = factory(this);
+        this.ramda = factory(this);
     }
-}(function(global) {
+}(function (global) {
 
     'use strict';
 
@@ -11352,17 +11427,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      firstThreeArgs(1, 2, 3, 4); //=> [1, 2, 3]
      */
     function _slice(args, from, to) {
-        switch (arguments.length) {
-            case 0: throw NO_ARGS_EXCEPTION;
-            case 1: return _slice(args, 0);
-            case 2: return _slice(args, from, args.length);
-            default:
-                var length = to - from, arr = new Array(length), i = -1;
-                while (++i < length) {
-                    arr[i] = args[from + i];
-                }
-                return arr;
+        from = (typeof from === 'number') ? from : 0;
+        to = (typeof to === 'number') ? to : args.length;
+        var length = to - from,
+            arr = new Array(length),
+            i = -1;
+
+        while (++i < length) {
+            arr[i] = args[from + i];
         }
+        return arr;
     }
 
 
@@ -11452,11 +11526,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * Optionally, you may provide an arity for the returned function.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (* -> a) -> Number -> (* -> a)
-     * @sig (* -> a) -> (* -> a)
      * @param {Function} fn The function to curry.
      * @param {number} [fnArity=fn.length] An optional arity for the returned function.
      * @return {Function} A new, curried function.
@@ -11472,20 +11544,21 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      g(4);//=> 10
      */
     var curry = R.curry = function _curry(fn, fnArity) {
-        if (arguments.length < 2) {
-            return _curry(fn, fn.length);
-        }
-        return (function recurry(args) {
-            return arity(Math.max(fnArity - (args && args.length || 0), 0), function() {
+        fnArity = typeof fnArity === 'number' ? fnArity : fn.length;
+        function recurry(args) {
+            return arity(Math.max(fnArity - (args && args.length || 0), 0), function () {
                 if (arguments.length === 0) { throw NO_ARGS_EXCEPTION; }
                 var newArgs = concat(args, arguments);
                 if (newArgs.length >= fnArity) {
                     return fn.apply(this, newArgs);
-                } else {
+                }
+                else {
                     return recurry(newArgs);
                 }
             });
-        }([]));
+        }
+
+        return recurry([]);
     };
 
 
@@ -11510,14 +11583,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     function curry2(fn) {
         return function(a, b) {
             switch (arguments.length) {
-                case 0:
-                    throw NO_ARGS_EXCEPTION;
-                case 1:
-                    return function(b) {
-                        return fn(a, b);
-                    };
-                default:
+                case 0: throw NO_ARGS_EXCEPTION;
+                case 1: return function(b) {
                     return fn(a, b);
+                };
+                default: return fn(a, b);
             }
         };
     }
@@ -11541,18 +11611,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     function curry3(fn) {
         return function(a, b, c) {
             switch (arguments.length) {
-                case 0:
-                    throw NO_ARGS_EXCEPTION;
-                case 1:
-                    return curry2(function(b, c) {
-                        return fn(a, b, c);
-                    });
-                case 2:
-                    return function(c) {
-                        return fn(a, b, c);
-                    };
-                default:
+                case 0: throw NO_ARGS_EXCEPTION;
+                case 1: return curry2(function(b, c) {
                     return fn(a, b, c);
+                });
+                case 2: return function(c) {
+                    return fn(a, b, c);
+                };
+                default: return fn(a, b, c);
             }
         };
     }
@@ -11602,6 +11668,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
                 case 1: return callBound ? obj[methodname]() : func(a);
                 case 2: return callBound ? obj[methodname](a) : func(a, b);
                 case 3: return callBound ? obj[methodname](a, b) : func(a, b, c);
+                case 4: return callBound ? obj[methodname](a, b, c) : func(a, b, c, obj);
             }
         };
     }
@@ -11633,10 +11700,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Wraps a function of any arity (including nullary) in a function that accepts exactly `n`
      * parameters. Any extraneous parameters will not be passed to the supplied function.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig Number -> (* -> a) -> (* -> a)
      * @param {number} n The desired arity of the new function.
      * @param {Function} fn The function to wrap.
      * @return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
@@ -11649,30 +11715,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      takesTwoArgs.length; //=> 2
      *      takesTwoArgs(1, 2); //=> [1, 2]
      *
-     *      var takesOneArg = R.nAry(1, takesTwoArgs);
+     *      var takesOneArg = ramda.nAry(1, takesTwoArgs);
      *      takesOneArg.length; //=> 1
      *      // Only `n` arguments are passed to the wrapped function
      *      takesOneArg(1, 2); //=> [1, undefined]
      */
-    var nAry = R.nAry = (function() {
+    var nAry = R.nAry = (function () {
         var cache = {
-            0: function(func) {
-                return function() {
+            0: function (func) {
+                return function () {
                     return func.call(this);
                 };
             },
-            1: function(func) {
-                return function(arg0) {
+            1: function (func) {
+                return function (arg0) {
                     return func.call(this, arg0);
                 };
             },
-            2: function(func) {
-                return function(arg0, arg1) {
+            2: function (func) {
+                return function (arg0, arg1) {
                     return func.call(this, arg0, arg1);
                 };
             },
-            3: function(func) {
-                return function(arg0, arg1, arg2) {
+            3: function (func) {
+                return function (arg0, arg1, arg2) {
                     return func.call(this, arg0, arg1, arg2);
                 };
             }
@@ -11686,11 +11752,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         //         }
         //     };
 
-        var makeN = function(n) {
+        var makeN = function (n) {
             var fnArgs = mkArgStr(n);
             var body = [
-                '    return function(' + fnArgs + ') {',
-                '        return func.call(this' + (fnArgs ? ', ' + fnArgs : '') + ');',
+                    '    return function(' + fnArgs + ') {',
+                    '        return func.call(this' + (fnArgs ? ', ' + fnArgs : '') + ');',
                 '    }'
             ].join('\n');
             return new Function('func', body);
@@ -11706,10 +11772,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Wraps a function of any arity (including nullary) in a function that accepts exactly 1
      * parameter. Any extraneous parameters will not be passed to the supplied function.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (* -> b) -> (a -> b)
      * @param {Function} fn The function to wrap.
      * @return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
      *         arity 1.
@@ -11721,7 +11786,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      takesTwoArgs.length; //=> 2
      *      takesTwoArgs(1, 2); //=> [1, 2]
      *
-     *      var takesOneArg = R.unary(1, takesTwoArgs);
+     *      var takesOneArg = ramda.unary(1, takesTwoArgs);
      *      takesOneArg.length; //=> 1
      *      // Only 1 argument is passed to the wrapped function
      *      takesOneArg(1, 2); //=> [1, undefined]
@@ -11735,10 +11800,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Wraps a function of any arity (including nullary) in a function that accepts exactly 2
      * parameters. Any extraneous parameters will not be passed to the supplied function.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (* -> c) -> (a, b -> c)
      * @param {Function} fn The function to wrap.
      * @return {Function} A new function wrapping `fn`. The new function is guaranteed to be of
      *         arity 2.
@@ -11750,7 +11814,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      takesThreeArgs.length; //=> 3
      *      takesThreeArgs(1, 2, 3); //=> [1, 2, 3]
      *
-     *      var takesTwoArgs = R.binary(1, takesThreeArgs);
+     *      var takesTwoArgs = ramda.binary(1, takesThreeArgs);
      *      takesTwoArgs.length; //=> 2
      *      // Only 2 arguments are passed to the wrapped function
      *      takesTwoArgs(1, 2, 3); //=> [1, 2, undefined]
@@ -11765,9 +11829,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * parameters. Unlike `nAry`, which passes only `n` arguments to the wrapped function,
      * functions produced by `arity` will pass all provided arguments to the wrapped function.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @sig (Number, (* -> *)) -> (* -> *)
      * @category Function
      * @param {number} n The desired arity of the returned function.
      * @param {Function} fn The function to wrap.
@@ -11781,30 +11844,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      takesTwoArgs.length; //=> 2
      *      takesTwoArgs(1, 2); //=> [1, 2]
      *
-     *      var takesOneArg = R.unary(1, takesTwoArgs);
+     *      var takesOneArg = ramda.unary(1, takesTwoArgs);
      *      takesOneArg.length; //=> 1
      *      // All arguments are passed through to the wrapped function
      *      takesOneArg(1, 2); //=> [1, 2]
      */
-    var arity = R.arity = (function() {
+    var arity = R.arity = (function () {
         var cache = {
-            0: function(func) {
-                return function() {
+            0: function (func) {
+                return function () {
                     return func.apply(this, arguments);
                 };
             },
-            1: function(func) {
-                return function(arg0) {
+            1: function (func) {
+                return function (arg0) {
                     return func.apply(this, arguments);
                 };
             },
-            2: function(func) {
-                return function(arg0, arg1) {
+            2: function (func) {
+                return function (arg0, arg1) {
                     return func.apply(this, arguments);
                 };
             },
-            3: function(func) {
-                return function(arg0, arg1, arg2) {
+            3: function (func) {
+                return function (arg0, arg1, arg2) {
                     return func.apply(this, arguments);
                 };
             }
@@ -11817,10 +11880,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         //         }
         //     };
 
-        var makeN = function(n) {
+        var makeN = function (n) {
             var fnArgs = mkArgStr(n);
             var body = [
-                '    return function(' + fnArgs + ') {',
+                    '    return function(' + fnArgs + ') {',
                 '        return func.apply(this, arguments);',
                 '    }'
             ].join('\n');
@@ -11841,28 +11904,27 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * The returned function is curried and accepts `len + 1` parameters (or `method.length + 1`
      * when `len` is not specified), and the final parameter is the target object.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (String, Object, Number) -> (* -> *)
      * @param {string} name The name of the method to wrap.
      * @param {Object} obj The object to search for the `name` method.
      * @param [len] The desired arity of the wrapped method.
      * @return {Function} A new function or `undefined` if the specified method is not found.
      * @example
      *
-     *      var charAt = R.invoker('charAt', String.prototype);
+     *      var charAt = ramda.invoker('charAt', String.prototype);
      *      charAt(6, 'abcdefghijklm'); //=> 'g'
      *
-     *      var join = R.invoker('join', Array.prototype);
+     *      var join = ramda.invoker('join', Array.prototype);
      *      var firstChar = charAt(0);
-     *      join('', R.map(firstChar, ['light', 'ampliifed', 'stimulated', 'emission', 'radiation']));
+     *      join('', ramda.map(firstChar, ['light', 'ampliifed', 'stimulated', 'emission', 'radiation']));
      *      //=> 'laser'
      */
     var invoker = R.invoker = function _invoker(name, obj, len) {
         var method = obj[name];
         var length = len === void 0 ? method.length : len;
-        return method && curry(function() {
+        return method && curry(function () {
             if (arguments.length) {
                 var target = Array.prototype.pop.call(arguments);
                 var targetMethod = target[name];
@@ -11881,7 +11943,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * new function. For example:
      *
      * ```javascript
-     *   var useWithExample = R.useWith(someFn, transformerFn1, transformerFn2);
+     *   var useWithExample = invoke(someFn, transformerFn1, transformerFn2);
      *
      *   // This invocation:
      *   useWithExample('x', 'y');
@@ -11894,13 +11956,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * arguments that don't need to be transformed, although you can ignore them, it's best to
      * pass an identity function so that the new function reports the correct arity.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig ((* -> *), (* -> *)...) -> (* -> *)
      * @param {Function} fn The function to wrap.
      * @param {...Function} transformers A variable number of transformer functions
      * @return {Function} The wrapped function.
+     * @alias disperseTo
      * @example
      *
      *      var double = function(y) { return y * 2; };
@@ -11908,11 +11970,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var add = function(a, b) { return a + b; };
      *      // Adds any number of arguments together
      *      var addAll = function() {
-     *        return R.reduce(add, 0, arguments);
+     *        return ramda.reduce(add, 0, arguments);
      *      };
      *
      *      // Basic example
-     *      var addDoubleAndSquare = R.useWith(addAll, double, square);
+     *      var addDoubleAndSquare = ramda.useWith(addAll, double, square);
      *
      *      addDoubleAndSquare(10, 5); //≅ addAll(double(10), square(5));
      *      //=> 125
@@ -11923,14 +11985,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      *      // But if you're expecting additional arguments that don't need transformation, it's best
      *      // to pass transformer functions so the resulting function has the correct arity
-     *      var addDoubleAndSquareWithExtraParams = R.useWith(addAll, double, square, R.identity);
-     *      addDoubleAndSquare(10, 5, 100); //≅ addAll(double(10), square(5), R.identity(100));
+     *      var addDoubleAndSquareWithExtraParams = ramda.useWith(addAll, double, square, ramda.identity);
+     *      addDoubleAndSquare(10, 5, 100); //≅ addAll(double(10), square(5), ramda.identity(100));
      *      //=> 225
      */
     var useWith = R.useWith = function _useWith(fn /*, transformers */) {
         var transformers = _slice(arguments, 1);
         var tlen = transformers.length;
-        return curry(arity(tlen, function() {
+        return curry(arity(tlen, function () {
             var args = [], idx = -1;
             while (++idx < tlen) {
                 args.push(transformers[idx](arguments[idx]));
@@ -11938,6 +12000,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
             return fn.apply(this, args.concat(_slice(arguments, tlen)));
         }));
     };
+    R.disperseTo = R.useWith;
 
 
     /**
@@ -11946,30 +12009,29 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * `fn` receives one argument: *(value)*.
      *
-     * Note: `R.forEach` does not skip deleted or unassigned indices (sparse arrays), unlike
+     * Note: `ramda.each` does not skip deleted or unassigned indices (sparse arrays), unlike
      * the native `Array.prototype.forEach` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
      *
-     * Also note that, unlike `Array.prototype.forEach`, Ramda's `forEach` returns the original
-     * array. In some libraries this function is named `each`.
+     * Also note that, unlike `Array.prototype.forEach`, Ramda's `each` returns the original
+     * array.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> *) -> [a] -> [a]
      * @param {Function} fn The function to invoke. Receives one argument, `value`.
      * @param {Array} list The list to iterate over.
      * @return {Array} The original list.
      * @example
      *
-     *      R.forEach(function(num) {
+     *      ramda.each(function(num) {
      *        console.log(num + 100);
      *      }, [1, 2, 3]); //=> [1, 2, 3]
      *      //-> 101
      *      //-> 102
      *      //-> 103
      */
-    function forEach(fn, list) {
+    function each(fn, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
             fn(list[idx]);
@@ -11977,40 +12039,39 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         // i can't bear not to return *something*
         return list;
     }
-    R.forEach = curry2(forEach);
+    R.each = curry2(each);
 
 
     /**
-     * Like `forEach`, but but passes additional parameters to the predicate function.
+     * Like `each`, but but passes additional parameters to the predicate function.
      *
      * `fn` receives three arguments: *(value, index, list)*.
      *
-     * Note: `R.forEach.idx` does not skip deleted or unassigned indices (sparse arrays),
+     * Note: `ramda.each.idx` does not skip deleted or unassigned indices (sparse arrays),
      * unlike the native `Array.prototype.forEach` method. For more details on this behavior,
      * see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
      *
-     * Also note that, unlike `Array.prototype.forEach`, Ramda's `forEach` returns the original
-     * array. In some libraries this function is named `each`.
+     * Also note that, unlike `Array.prototype.forEach`, Ramda's `each` returns the original
+     * array.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a, i, [a] -> ) -> [a] -> [a]
      * @param {Function} fn The function to invoke. Receives three arguments:
      *        (`value`, `index`, `list`).
      * @param {Array} list The list to iterate over.
      * @return {Array} The original list.
-     * @alias forEach.idx
+     * @alias forEach
      * @example
      *
      *      // Note that having access to the original `list` allows for
      *      // mutation. While you *can* do this, it's very un-functional behavior:
-     *      R.forEach.idx(function(num, idx, list) {
+     *      ramda.each.idx(function(num, idx, list) {
      *        list[idx] = num + 100;
      *      }, [1, 2, 3]); //=> [101, 102, 103]
      */
-    R.forEach.idx = curry2(function forEachIdx(fn, list) {
+    R.each.idx = curry2(function eachIdx(fn, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
             fn(list[idx], idx, list);
@@ -12018,26 +12079,26 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         // i can't bear not to return *something*
         return list;
     });
+    R.forEach = R.each;
 
 
     /**
      * Creates a shallow copy of an array.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig [a] -> [a]
      * @param {Array} list The list to clone.
      * @return {Array} A new copy of the original list.
      * @example
      *
      *      var numbers = [1, 2, 3];
-     *      var numbersClone = R.clone(numbers); //=> [1, 2, 3]
+     *      var numbersClone = ramda.clone(numbers); //=> [1, 2, 3]
      *      numbers === numbersClone; //=> false
      *
      *      // Note that this is a shallow clone--it does not clone complex values:
      *      var objects = [{}, {}, {}];
-     *      var objectsClone = R.clone(objects);
+     *      var objectsClone = ramda.clone(objects);
      *      objects[0] === objectsClone[0]; //=> true
      */
     var clone = R.clone = function _clone(list) {
@@ -12052,19 +12113,18 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Reports whether an array is empty.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig [a] -> Boolean
      * @param {Array} arr The array to consider.
      * @return {boolean} `true` if the `arr` argument has a length of 0 or
      *         if `arr` is a falsy value (e.g. undefined).
      * @example
      *
-     *      R.isEmpty([1, 2, 3]); //=> false
-     *      R.isEmpty([]); //=> true
-     *      R.isEmpty(); //=> true
-     *      R.isEmpty(null); //=> true
+     *      ramda.isEmpty([1, 2, 3]); //=> false
+     *      ramda.isEmpty([]); //=> true
+     *      ramda.isEmpty(); //=> true
+     *      ramda.isEmpty(null); //=> true
      */
     function isEmpty(arr) {
         return !arr || !arr.length;
@@ -12076,70 +12136,57 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list with the given element at the front, followed by the contents of the
      * list.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig a -> [a] -> [a]
      * @param {*} el The item to add to the head of the output list.
      * @param {Array} arr The array to add to the tail of the output list.
      * @return {Array} A new array.
+     * @alias cons
      * @example
      *
-     *      R.prepend('fee', ['fi', 'fo', 'fum']); //=> ['fee', 'fi', 'fo', 'fum']
+     *      ramda.prepend('fee', ['fi', 'fo', 'fum']); //=> ['fee', 'fi', 'fo', 'fum']
      */
-    R.prepend = function prepend(el, arr) {
+    function prepend(el, arr) {
         return concat([el], arr);
-    };
-
-    /**
-     * @func
-     * @memberOf R
-     * @category Array
-     * @see R.prepend
-     */
+    }
+    R.prepend = prepend;
     R.cons = R.prepend;
 
 
     /**
      * Returns the first element in a list.
-     * In some libraries this function is named `first`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig [a] -> a
      * @param {Array} [arr=[]] The array to consider.
      * @return {*} The first element of the list, or `undefined` if the list is empty.
+     * @alias car
+     * @alias first
      * @example
      *
-     *      R.head(['fi', 'fo', 'fum']); //=> 'fi'
+     *      ramda.head(['fi', 'fo', 'fum']); //=> 'fi'
      */
-    var head = R.head = function head(arr) {
+    var head = R.head = function _car(arr) {
         arr = arr || [];
         return arr[0];
     };
 
-    /**
-     * @func
-     * @memberOf R
-     * @category Array
-     * @see R.head
-     */
-    R.car = R.head;
+    R.car = R.first = R.head;
 
 
     /**
      * Returns the last element from a list.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig [a] -> a
      * @param {Array} [arr=[]] The array to consider.
      * @return {*} The last element of the list, or `undefined` if the list is empty.
      * @example
      *
-     *      R.last(['fi', 'fo', 'fum']); //=> 'fum'
+     *      ramda.last(['fi', 'fo', 'fum']); //=> 'fum'
      */
     R.last = function _last(arr) {
         arr = arr || [];
@@ -12151,28 +12198,22 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns all but the first element of a list. If the list provided has the `tail` method,
      * it will instead return `list.tail()`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig [a] -> [a]
      * @param {Array} [arr=[]] The array to consider.
      * @return {Array} A new array containing all but the first element of the input list, or an
      *         empty list if the input list is a falsy value (e.g. `undefined`).
+     * @alias cdr
      * @example
      *
-     *      R.tail(['fi', 'fo', 'fum']); //=> ['fo', 'fum']
+     *      ramda.tail(['fi', 'fo', 'fum']); //=> ['fo', 'fum']
      */
     var tail = R.tail = checkForMethod('tail', function(arr) {
         arr = arr || [];
         return (arr.length > 1) ? _slice(arr, 1) : [];
     });
 
-    /**
-     * @func
-     * @memberOf R
-     * @category Array
-     * @see R.tail
-     */
     R.cdr = R.tail;
 
 
@@ -12180,22 +12221,21 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns `true` if the argument is an atom; `false` otherwise. An atom is defined as any
      * value that is not an array, `undefined`, or `null`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig a -> Boolean
      * @param {*} x The element to consider.
      * @return {boolean} `true` if `x` is an atom, and `false` otherwise.
      * @example
      *
-     *      R.isAtom([]); //=> false
-     *      R.isAtom(null); //=> false
-     *      R.isAtom(undefined); //=> false
+     *      ramda.isAtom([]); //=> false
+     *      ramda.isAtom(null); //=> false
+     *      ramda.isAtom(undefined); //=> false
      *
-     *      R.isAtom(0); //=> true
-     *      R.isAtom(''); //=> true
-     *      R.isAtom('test'); //=> true
-     *      R.isAtom({}); //=> true
+     *      ramda.isAtom(0); //=> true
+     *      ramda.isAtom(''); //=> true
+     *      ramda.isAtom('test'); //=> true
+     *      ramda.isAtom({}); //=> true
      */
     R.isAtom = function _isAtom(x) {
         return x != null && !isArray(x);
@@ -12206,30 +12246,24 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list containing the contents of the given list, followed by the given
      * element.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig a -> [a] -> [a]
      * @param {*} el The element to add to the end of the new list.
      * @param {Array} list The list whose contents will be added to the beginning of the output
      *        list.
      * @return {Array} A new list containing the contents of the old list followed by `el`.
+     * @alias push
      * @example
      *
-     *      R.append('tests', ['write', 'more']); //=> ['write', 'more', 'tests']
-     *      R.append('tests', []); //=> ['tests']
-     *      R.append(['tests'], ['write', 'more']); //=> ['write', 'more', ['tests']]
+     *      ramda.append('tests', ['write', 'more']); //=> ['write', 'more', 'tests']
+     *      ramda.append('tests', []); //=> ['tests']
+     *      ramda.append(['tests'], ['write', 'more']); //=> ['write', 'more', ['tests']]
      */
     var append = R.append = function _append(el, list) {
         return concat(list, [el]);
     };
 
-    /**
-     * @func
-     * @memberOf R
-     * @category Array
-     * @see R.append
-     */
     R.push = R.append;
 
 
@@ -12237,10 +12271,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list consisting of the elements of the first list followed by the elements
      * of the second.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig [a] -> [a] -> [a]
      * @param {Array} list1 The first list to merge.
      * @param {Array} list2 The second set to merge.
      * @return {Array} A new array consisting of the contents of `list1` followed by the
@@ -12249,20 +12282,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *         and it the value of `list2`.
      * @example
      *
-     *      R.concat([], []); //=> []
-     *      R.concat([4, 5, 6], [1, 2, 3]); //=> [4, 5, 6, 1, 2, 3]
-     *      R.concat('ABC', 'DEF'); // 'ABCDEF'
+     *      ramda.concat([], []); //=> []
+     *      ramda.concat([4, 5, 6], [1, 2, 3]); //=> [4, 5, 6, 1, 2, 3]
+     *      ramda.concat('ABC', 'DEF'); // 'ABCDEF'
      */
     R.concat = curry2(function(set1, set2) {
-        if (isArray(set2)) {
-            return concat(set1, set2);
-        } else if (R.is(String, set1)) {
-            return set1.concat(set2);
-        } else if (hasMethod('concat', set2)) {
-            return set2.concat(set1);
-        } else {
-            throw new TypeError("can't concat " + typeof set2);
-        }
+        if (isArray(set2)) { return concat(set1, set2); }
+        else if (R.is(String, set1)) { return set1.concat(set2); }
+        else if (hasMethod('concat', set2)) { return set2.concat(set1); }
+        else { throw new TypeError("can't concat " + typeof set2); }
     });
 
 
@@ -12270,29 +12298,22 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * A function that does nothing but return the parameter supplied to it. Good as a default
      * or placeholder function.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Core
-     * @sig a -> a
      * @param {*} x The value to return.
      * @return {*} The input value, `x`.
+     * @alias I
      * @example
      *
-     *      R.identity(1); //=> 1
+     *      ramda.identity(1); //=> 1
      *
      *      var obj = {};
-     *      R.identity(obj) === obj; //=> true
+     *      ramda.identity(obj) === obj; //=> true
      */
     var identity = R.identity = function _I(x) {
         return x;
     };
-
-    /**
-     * @func
-     * @memberOf R
-     * @category Core
-     * @see R.identity
-     */
     R.I = R.identity;
 
 
@@ -12303,16 +12324,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `fn` is passed one argument: The current value of `n`, which begins at `0` and is
      * gradually incremented to `n - 1`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (i -> a) -> i -> [a]
      * @param {Function} fn The function to invoke. Passed one argument, the current value of `n`.
      * @param {number} n A value between `0` and `n - 1`. Increments after each function call.
      * @return {Array} An array containing the return values of all calls to `fn`.
      * @example
      *
-     *      R.times(function(n) { return n; }, 5); //=> [0, 1, 2, 3, 4]
+     *      ramda.times(function(n) { return n; }, 5); //=> [0, 1, 2, 3, 4]
      */
     R.times = curry2(function _times(fn, n) {
         var arr = new Array(n);
@@ -12327,19 +12347,18 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a fixed list of size `n` containing a specified identical value.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Array
-     * @sig a -> n -> [a]
      * @param {*} value The value to repeat.
      * @param {number} n The desired size of the output list.
      * @return {Array} A new array containing `n` `value`s.
      * @example
      *
-     *      R.repeatN('hi', 5); //=> ['hi', 'hi', 'hi', 'hi', 'hi']
+     *      ramda.repeatN('hi', 5); //=> ['hi', 'hi', 'hi', 'hi', 'hi']
      *
      *      var obj = {};
-     *      var repeatedObjs = R.repeatN(obj, 5); //=> [{}, {}, {}, {}, {}]
+     *      var repeatedObjs = ramda.repeatN(obj, 5); //=> [{}, {}, {}, {}, {}]
      *      repeatedObjs[0] === repeatedObjs[1]; //=> true
      */
     R.repeatN = curry2(function _repeatN(value, n) {
@@ -12354,6 +12373,35 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     // These functions make new functions out of old ones.
 
     // --------
+
+    /**
+     * Returns a new function which partially applies a value to a given function, where the
+     * function is a variadic function that cannot be curried.
+     *
+     * @private
+     * @category Function
+     * @param {Function} f The function to partially apply `a` onto.
+     * @param {*} a The argument to partially apply onto `f`.
+     * @return {Function} A new function.
+     * @example
+     *
+     *      var addThree = function(a, b, c) {
+     *        return a + b + c;
+     *      };
+     *      var partialAdd = partially(add, 1);
+     *      partialAdd(2, 3); //=> 6
+     *
+     *      // partialAdd is invoked immediately, even though it expects three arguments. This is
+     *      // because, unlike many functions here, the result of `partially` is not a curried
+     *      // function.
+     *      partialAdd(2); //≅ addThree(1, 2, undefined) => NaN
+     */
+    function partially(f, a) {
+        return function() {
+            return f.apply(this, concat([a], arguments));
+        };
+    }
+
 
     /**
      * Basic, right-associative composition function. Accepts two functions and returns the
@@ -12394,10 +12442,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * the function `h` is equivalent to `f( g(x) )`, where `x` represents the arguments
      * originally passed to `h`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig ((y -> z), (x -> y), ..., (b -> c), (a... -> b)) -> (a... -> z)
      * @param {...Function} functions A variable number of functions.
      * @return {Function} A new function which represents the result of calling each of the
      *         input `functions`, passing the result of each function call to the next, from
@@ -12407,7 +12454,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var triple = function(x) { return x * 3; };
      *      var double = function(x) { return x * 2; };
      *      var square = function(x) { return x * x; };
-     *      var squareThenDoubleThenTriple = R.compose(triple, double, square);
+     *      var squareThenDoubleThenTriple = ramda.compose(triple, double, square);
      *
      *      squareThenDoubleThenTriple(5); //≅ triple(double(square(5))) => 150
      */
@@ -12433,21 +12480,20 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `pipe` is the mirror version of `compose`. `pipe` is left-associative, which means that
      * each of the functions provided is executed in order from left to right.
      *
-     * In some libraries this function is named `sequence`.
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig ((a... -> b), (b -> c), ..., (x -> y), (y -> z)) -> (a... -> z)
      * @param {...Function} functions A variable number of functions.
      * @return {Function} A new function which represents the result of calling each of the
      *         input `functions`, passing the result of each function call to the next, from
      *         right to left.
+     * @alias sequence
      * @example
      *
      *      var triple = function(x) { return x * 3; };
      *      var double = function(x) { return x * 2; };
      *      var square = function(x) { return x * x; };
-     *      var squareThenDoubleThenTriple = R.pipe(square, double, triple);
+     *      var squareThenDoubleThenTriple = ramda.pipe(square, double, triple);
      *
      *      squareThenDoubleThenTriple(5); //≅ triple(double(square(5))) => 150
      */
@@ -12455,15 +12501,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         return compose.apply(this, _slice(arguments).reverse());
     };
 
+    R.sequence = R.pipe;
+
 
     /**
      * Returns a new function much like the supplied one, except that the first two arguments'
      * order is reversed.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (a -> b -> c -> ... -> z) -> (b -> a -> c -> ... -> z)
      * @param {Function} fn The function to invoke with its first two parameters reversed.
      * @return {*} The result of invoking `fn` with its first two parameters' order reversed.
      * @example
@@ -12475,10 +12522,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      *      mergeThree(numbers); //=> [1, 2, 3]
      *
-     *      R.flip([1, 2, 3]); //=> [2, 1, 3]
+     *      ramda.flip([1, 2, 3]); //=> [2, 1, 3]
      */
     var flip = R.flip = function _flip(fn) {
-        return function(a, b) {
+        return function (a, b) {
             switch (arguments.length) {
                 case 0: throw NO_ARGS_EXCEPTION;
                 case 1: return function(b) { return fn.apply(this, [b, a].concat(_slice(arguments, 1))); };
@@ -12491,35 +12538,37 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Accepts as its arguments a function and any number of values and returns a function that,
      * when invoked, calls the original function with all of the values prepended to the
-     * original function's arguments list. In some libraries this function is named `applyLeft`.
+     * original function's arguments list.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (a -> b -> ... -> i -> j -> ... -> m -> n) -> a -> b-> ... -> i -> (j -> ... -> m -> n)
      * @param {Function} fn The function to invoke.
      * @param {...*} [args] Arguments to prepend to `fn` when the returned function is invoked.
      * @return {Function} A new function wrapping `fn`. When invoked, it will call `fn`
      *         with `args` prepended to `fn`'s arguments list.
+     * @alias applyLeft
      * @example
      *
      *      var multiply = function(a, b) { return a * b; };
-     *      var double = R.lPartial(multiply, 2);
+     *      var double = ramda.lPartial(multiply, 2);
      *      double(2); //=> 4
      *
      *      var greet = function(salutation, title, firstName, lastName) {
      *        return salutation + ', ' + title + ' ' + firstName + ' ' + lastName + '!';
      *      };
-     *      var sayHello = R.lPartial(greet, 'Hello');
-     *      var sayHelloToMs = R.lPartial(sayHello, 'Ms.');
+     *      var sayHello = ramda.lPartial(greet, 'Hello');
+     *      var sayHelloToMs = ramda.lPartial(sayHello, 'Ms.');
      *      sayHelloToMs('Jane', 'Jones'); //=> 'Hello, Ms. Jane Jones!'
      */
     R.lPartial = function _lPartial(fn /*, args */) {
         var args = _slice(arguments, 1);
-        return arity(Math.max(fn.length - args.length, 0), function() {
+        return arity(Math.max(fn.length - args.length, 0), function () {
             return fn.apply(this, concat(args, arguments));
         });
     };
+
+    R.applyLeft = R.lPartial;
 
 
     /**
@@ -12528,22 +12577,22 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * function's arguments list.
      *
      * Note that `rPartial` is the opposite of `lPartial`: `rPartial` fills `fn`'s arguments
-     * from the right to the left.  In some libraries this function is named `applyRight`.
+     * from the right to the left.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (a -> b-> ... -> i -> j -> ... -> m -> n) -> j -> ... -> m -> n -> (a -> b-> ... -> i)
      * @param {Function} fn The function to invoke.
      * @param {...*} [args] Arguments to append to `fn` when the returned function is invoked.
      * @return {Function} A new function wrapping `fn`. When invoked, it will call `fn` with
      *         `args` appended to `fn`'s arguments list.
+     * @alias applyRight
      * @example
      *
      *      var greet = function(salutation, title, firstName, lastName) {
      *        return salutation + ', ' + title + ' ' + firstName + ' ' + lastName + '!';
      *      };
-     *      var greetMsJaneJones = R.rPartial(greet, 'Ms.', 'Jane', 'Jones');
+     *      var greetMsJaneJones = ramda.rPartial(greet, 'Ms.', 'Jane', 'Jones');
      *
      *      greetMsJaneJones('Hello'); //=> 'Hello, Ms. Jane Jones!'
      */
@@ -12553,6 +12602,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
             return fn.apply(this, concat(arguments, args));
         });
     };
+
+    R.applyRight = R.rPartial;
 
 
     /**
@@ -12564,10 +12615,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that this version of `memoize` effectively handles only string and number
      * parameters.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (a... -> b) -> (a... -> b)
      * @param {Function} fn The function to be wrapped by `memoize`.
      * @return {Function}  Returns a memoized version of `fn`.
      * @example
@@ -12577,7 +12627,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        numberOfCalls += 1;
      *        return a + b;
      *      };
-     *      var memoTrackedAdd = R.memoize(trackedAdd);
+     *      var memoTrackedAdd = ramda.memoize(trackedAdd);
      *
      *      memoAdd(1, 2); //=> 3 (numberOfCalls => 1)
      *      memoAdd(1, 2); //=> 3 (numberOfCalls => 1)
@@ -12588,8 +12638,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.memoize = function _memoize(fn) {
         var cache = {};
-        return function() {
-            var position = foldl(function(cache, arg) {
+        return function () {
+            var position = foldl(function (cache, arg) {
                     return cache[arg] || (cache[arg] = {});
                 }, cache,
                 _slice(arguments, 0, arguments.length - 1));
@@ -12604,22 +12654,21 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `fn` can only ever be called once, no matter how many times the returned function is
      * invoked.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (a... -> b) -> (a... -> b)
      * @param {Function} fn The function to wrap in a call-only-once wrapper.
      * @return {Function} The wrapped function.
      * @example
      *
-     *      var alertOnce = R.once(alert);
+     *      var alertOnce = ramda.once(alert);
      *      alertOnce('Hello!'); // Alerts 'Hello!'
      *      alertOnce('Nothing'); // Doesn't alert
      *      alertOnce('Again'); // Doesn't alert
      */
     R.once = function _once(fn) {
         var called = false, result;
-        return function() {
+        return function () {
             if (called) {
                 return result;
             }
@@ -12634,10 +12683,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Wrap a function inside another to allow you to make adjustments to the parameters, or do
      * other processing either before the internal function is called or with its results.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * ((* -> *) -> ((* -> *), a...) -> (*, a... -> *)
      * @param {Function} fn The function to wrap.
      * @param {Function} wrapper The wrapper function.
      * @return {Function} The wrapped function.
@@ -12664,10 +12712,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * NOTE: Does not work with some built-in objects such as Date.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig Number -> (* -> {*}) -> (* -> {*})
      * @param {number} n The arity of the constructor function.
      * @param {Function} Fn The constructor function to wrap.
      * @return {Function} A wrapped, curried constructor function.
@@ -12684,7 +12731,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      map(constructN(1, Widget), allConfigs); //=> a list of Widgets
      */
     var constructN = R.constructN = function _constructN(n, Fn) {
-        var f = function() {
+        var f = function () {
             var Temp = function() {}, inst, ret;
             Temp.prototype = Fn.prototype;
             inst = new Temp();
@@ -12701,10 +12748,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * NOTE: Does not work with some built-in objects such as Date.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig (* -> {*}) -> (* -> {*})
      * @param {Function} Fn The constructor function to wrap.
      * @return {Function} A wrapped, curried constructor function.
      * @example
@@ -12728,17 +12774,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * invoke the first function, `after`, passing as its arguments the results of invoking the
      * second and third functions with whatever arguments are passed to the new function.
      *
-     * For example, a function produced by `converge` is equivalent to:
+     * For example, a function produced by `fork` is equivalent to:
      *
      * ```javascript
-     *   var h = R.converge(e, f, g);
+     *   var h = ramda.fork(e, f, g);
      *   h(1, 2); //≅ e( f(1, 2), g(1, 2) )
      * ```
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig ((a, b -> c) -> (((* -> a), (* -> b), ...) -> c)
      * @param {Function} after A function. `after` will be invoked with the return values of
      *        `fn1` and `fn2` as its arguments.
      * @param {Function} fn1 A function. It will be invoked with the arguments passed to the
@@ -12748,25 +12793,28 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        returned function. Afterward, its resulting value will be passed to `after` as
      *        its second argument.
      * @return {Function} A new function.
+     * @alias distributeTo
      * @example
      *
      *      var add = function(a, b) { return a + b; };
      *      var multiply = function(a, b) { return a * b; };
      *      var subtract = function(a, b) { return a - b; };
      *
-     *      R.converge(multiply, add, subtract)(1, 2);
+     *      ramda.fork(multiply, add, subtract)(1, 2);
      *      //≅ multiply( add(1, 2), subtract(1, 2) );
      *      //=> -3
      */
-    R.converge = function(after) {
+    R.fork = function (after) {
         var fns = _slice(arguments, 1);
-        return function() {
+        return function () {
             var args = arguments;
-            return after.apply(this, map(function(fn) {
+            return after.apply(this, map(function (fn) {
                 return fn.apply(this, args);
             }, fns));
         };
     };
+
+    R.distributeTo = R.fork;
 
 
 
@@ -12793,19 +12841,19 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * The iterator function receives two values: *(acc, value)*
      *
-     * Note: `R.reduce` does not skip deleted or unassigned indices (sparse arrays), unlike
+     * Note: `ramda.reduce` does not skip deleted or unassigned indices (sparse arrays), unlike
      * the native `Array.prototype.reduce` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce#Description
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a,b -> a) -> a -> [b] -> a
      * @param {Function} fn The iterator function. Receives two values, the accumulator and the
      *        current element from the array.
      * @param {*} acc The accumulator value.
      * @param {Array} list The list to iterate over.
      * @return {*} The final, accumulated value.
+     * @alias foldl
      * @example
      *
      *      var numbers = [1, 2, 3];
@@ -12813,9 +12861,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return a + b;
      *      };
      *
-     *      reduce(add, 10, numbers); //=> 16
+     *      reduce(numbers, add, 10); //=> 16
      */
-    R.reduce = curry3(checkForMethod('reduce', function _reduce(fn, acc, list) {
+    var foldl = R.reduce =  curry3(checkForMethod('reduce', function _reduce(fn, acc, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
             acc = fn(acc, list[idx]);
@@ -12823,35 +12871,27 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         return acc;
     }));
 
-    /**
-     * @func
-     * @memberOf R
-     * @category List
-     * @see R.reduce
-     */
-    var foldl = R.foldl = R.reduce;
+    R.foldl = R.reduce;
 
 
     /**
-     * Like `reduce`, but passes additional parameters to the predicate function.
+     * Like `foldl`, but passes additional parameters to the predicate function.
      *
      * The iterator function receives four values: *(acc, value, index, list)*
      *
-     * Note: `R.reduce.idx` does not skip deleted or unassigned indices (sparse arrays),
+     * Note: `ramda.foldl.idx` does not skip deleted or unassigned indices (sparse arrays),
      * unlike the native `Array.prototype.reduce` method. For more details on this behavior,
      * see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce#Description
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a,b,i,[b] -> a) -> a -> [b] -> a
      * @param {Function} fn The iterator function. Receives four values: the accumulator, the
      *        current element from `list`, that element's index, and the entire `list` itself.
      * @param {*} acc The accumulator value.
      * @param {Array} list The list to iterate over.
      * @return {*} The final, accumulated value.
-     * @alias reduce.idx
      * @example
      *
      *      var letters = ['a', 'b', 'c'];
@@ -12859,25 +12899,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return accObject[elem] = idx;
      *      };
      *
-     *      reduce.idx(letters, objectify, {}); //=> { 'a': 0, 'b': 1, 'c': 2 }
+     *      foldl.idx(letters, objectify, {}); //=> { 'a': 0, 'b': 1, 'c': 2 }
      */
-    R.reduce.idx = curry3(function _reduceIdx(fn, acc, list) {
+    R.foldl.idx = curry3(checkForMethod('foldl', function(fn, acc, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
             acc = fn(acc, list[idx], idx, list);
         }
         return acc;
-    });
-
-
-    /**
-     * @func
-     * @memberOf R
-     * @category List
-     * @alias foldl.idx
-     * @see R.reduce.idx
-     */
-    R.foldl.idx = R.reduce.idx;
+    }));
 
 
     /**
@@ -12885,23 +12915,23 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * function and passing it an accumulator value and the current value from the array, and
      * then passing the result to the next call.
      *
-     * Similar to `reduce`, except moves through the input list from the right to the left.
+     * Similar to `foldl`, except moves through the input list from the right to the left.
      *
      * The iterator function receives two values: *(acc, value)*
      *
-     * Note: `R.reduce` does not skip deleted or unassigned indices (sparse arrays), unlike
+     * Note: `ramda.foldr` does not skip deleted or unassigned indices (sparse arrays), unlike
      * the native `Array.prototype.reduce` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce#Description
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a,b -> a) -> a -> [b] -> a
      * @param {Function} fn The iterator function. Receives two values, the accumulator and the
      *        current element from the array.
      * @param {*} acc The accumulator value.
      * @param {Array} list The list to iterate over.
      * @return {*} The final, accumulated value.
+     * @alias reduceRight
      * @example
      *
      *      var pairs = [ ['a', 1], ['b', 2], ['c', 3] ];
@@ -12909,9 +12939,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return acc.concat(pair);
      *      };
      *
-     *      reduceRight(numbers, flattenPairs, []); //=> [ 'c', 3, 'b', 2, 'a', 1 ]
+     *      foldr(numbers, flattenPairs, []); //=> [ 'c', 3, 'b', 2, 'a', 1 ]
      */
-    R.reduceRight = curry3(checkForMethod('reduceRight', function _reduceRight(fn, acc, list) {
+    var foldr = R.foldr = curry3(checkForMethod('foldr', function(fn, acc, list) {
         var idx = list.length;
         while (idx--) {
             acc = fn(acc, list[idx]);
@@ -12919,36 +12949,28 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         return acc;
     }));
 
-    /**
-     * @func
-     * @memberOf R
-     * @category List
-     * @see R.reduceRight
-     */
-    var foldr = R.foldr = R.reduceRight;
+    R.reduceRight = R.foldr;
 
 
     /**
-     * Like `reduceRight`, but passes additional parameters to the predicate function. Moves through
+     * Like `foldr`, but passes additional parameters to the predicate function. Moves through
      * the input list from the right to the left.
      *
      * The iterator function receives four values: *(acc, value, index, list)*.
      *
-     * Note: `R.reduceRight.idx` does not skip deleted or unassigned indices (sparse arrays),
+     * Note: `ramda.foldr.idx` does not skip deleted or unassigned indices (sparse arrays),
      * unlike the native `Array.prototype.reduce` method. For more details on this behavior,
      * see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce#Description
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a,b,i,[b] -> a -> [b] -> a
      * @param {Function} fn The iterator function. Receives four values: the accumulator, the
      *        current element from `list`, that element's index, and the entire `list` itself.
      * @param {*} acc The accumulator value.
      * @param {Array} list The list to iterate over.
      * @return {*} The final, accumulated value.
-     * @alias reduceRight.idx
      * @example
      *
      *      var letters = ['a', 'b', 'c'];
@@ -12956,25 +12978,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return accObject[elem] = idx;
      *      };
      *
-     *      reduceRight.idx(letters, objectify, {}); //=> { 'c': 2, 'b': 1, 'a': 0 }
+     *      foldr.idx(letters, objectify, {}); //=> { 'c': 2, 'b': 1, 'a': 0 }
      */
-    R.reduceRight.idx = curry3(function _reduceRightIdx(fn, acc, list) {
+    R.foldr.idx = curry3(checkForMethod('foldr', function(fn, acc, list) {
         var idx = list.length;
         while (idx--) {
             acc = fn(acc, list[idx], idx, list);
         }
         return acc;
-    });
-
-
-    /**
-     * @func
-     * @memberOf R
-     * @category List
-     * @alias foldr.idx
-     * @see R.reduceRight.idx
-     */
-    R.foldr.idx = R.reduceRight.idx;
+    }));
 
 
     /**
@@ -12984,10 +12996,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * The iterator function receives one argument: *(seed)*.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> [b]) -> * -> [b]
      * @param {Function} fn The iterator function. receives one argument, `seed`, and returns
      *        either false to quit iteration or an array of length two to proceed. The element
      *        at index 0 of this array will be added to the resulting array, and the element
@@ -13014,14 +13025,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list, constructed by applying the supplied function to every element of the
      * supplied list.
      *
-     * Note: `R.map` does not skip deleted or unassigned indices (sparse arrays), unlike the
+     * Note: `ramda.map` does not skip deleted or unassigned indices (sparse arrays), unlike the
      * native `Array.prototype.map` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map#Description
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> b) -> [a] -> [b]
      * @param {Function} fn The function to be called on every element of the input `list`.
      * @param {Array} list The list to be iterated over.
      * @return {Array} The new list.
@@ -13031,7 +13041,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return x * 2;
      *      };
      *
-     *      R.map(double, [1, 2, 3]); //=> [2, 4, 6]
+     *      ramda.map(double, [1, 2, 3]); //=> [2, 4, 6]
      */
     function map(fn, list) {
         var idx = -1, len = list.length, result = new Array(len);
@@ -13045,21 +13055,20 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 
 
     /**
-     * Like `map`, but but passes additional parameters to the mapping function.
+     * Like `map`, but but passes additional parameters to the predicate function.
+     *
      * `fn` receives three arguments: *(value, index, list)*.
      *
-     * Note: `R.map.idx` does not skip deleted or unassigned indices (sparse arrays), unlike
+     * Note: `ramda.map.idx` does not skip deleted or unassigned indices (sparse arrays), unlike
      * the native `Array.prototype.map` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map#Description
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a,i,[b] -> b) -> [a] -> [b]
      * @param {Function} fn The function to be called on every element of the input `list`.
      * @param {Array} list The list to be iterated over.
      * @return {Array} The new list.
-     * @alias map.idx
      * @example
      *
      *      var squareEnds = function(elt, idx, list) {
@@ -13069,16 +13078,16 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return elt;
      *      };
      *
-     *      R.map.idx(squareEnds, [8, 6, 7, 5, 3, 0, 9];
+     *      ramda.map.idx(squareEnds, [8, 6, 7, 5, 3, 0, 9];
      *      //=> [64, 6, 7, 5, 3, 0, 81]
      */
-    R.map.idx = curry2(function _mapIdx(fn, list) {
+    R.map.idx = curry2(checkForMethod('map', function _mapIdx(fn, list) {
         var idx = -1, len = list.length, result = new Array(len);
         while (++idx < len) {
             result[idx] = fn(list[idx], idx, list);
         }
         return result;
-    });
+    }));
 
 
     /**
@@ -13086,10 +13095,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * generated by running each property of `obj` through `fn`. `fn` is passed one argument:
      * *(value)*.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (v -> v) -> {k: v} -> {k: v}
      * @param {Array} fn A function called for each property in `obj`. Its return value will
      * become a new property on the return object.
      * @param {Object} obj The object to iterate over.
@@ -13102,11 +13110,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return num * 2;
      *      };
      *
-     *      R.mapObj(double, values); //=> { x: 2, y: 4, z: 6 }
+     *      ramda.mapObj(double, values); //=> { x: 2, y: 4, z: 6 }
      */
     // TODO: consider mapObj.key in parallel with mapObj.idx.  Also consider folding together with `map` implementation.
     R.mapObj = curry2(function _mapObject(fn, obj) {
-        return foldl(function(acc, key) {
+        return foldl(function (acc, key) {
             acc[key] = fn(obj[key]);
             return acc;
         }, {}, keys(obj));
@@ -13117,17 +13125,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Like `mapObj`, but but passes additional arguments to the predicate function. The
      * predicate function is passed three arguments: *(value, key, obj)*.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (v, k, {k: v} -> v) -> {k: v} -> {k: v}
-     * @param {Array} fn A function called for each property in `obj`. Its return value will
      * @param {Array} fn A function called for each property in `obj`. Its return value will
      *        become a new property on the return object.
      * @param {Object} obj The object to iterate over.
      * @return {Object} A new object with the same keys as `obj` and values that are the result
      *         of running each property through `fn`.
-     * @alias mapObj.idx
      * @example
      *
      *      var values = { x: 1, y: 2, z: 3 };
@@ -13135,10 +13140,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *        return key + num;
      *      };
      *
-     *      R.mapObj(double, values); //=> { x: 'x2', y: 'y4', z: 'z6' }
+     *      ramda.mapObj(double, values); //=> { x: 'x2', y: 'y4', z: 'z6' }
      */
     R.mapObj.idx = curry2(function mapObjectIdx(fn, obj) {
-        return foldl(function(acc, key) {
+        return foldl(function (acc, key) {
             acc[key] = fn(obj[key], key, obj);
             return acc;
         }, {}, keys(obj));
@@ -13148,10 +13153,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * ap applies a list of functions to a list of values.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig [f] -> [a] -> [f a]
      * @param {Array} fns An array of functions
      * @param {Array} vs An array of values
      * @return the value of applying each the function `fns` to each value in `vs`
@@ -13173,10 +13177,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note this `of` is different from the ES6 `of`; See
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/of
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig a -> [a]
      * @param x any value
      * @return [x]
      * @example
@@ -13194,10 +13197,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `empty` wraps any object in an array. This implementation is compatible with the
      * Fantasy-land Monoid spec, and will work with types that implement that spec.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig * -> []
      * @return {Array} an empty array
      * @example
      *
@@ -13212,15 +13214,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `chain` maps a function over a list and concatenates the results.
      * This implementation is compatible with the
      * Fantasy-land Chain spec, and will work with types that implement that spec.
-     * `chain` is also known as `flatMap` in some libraries
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> [b]) -> [a] -> [b]
      * @param {Function}
      * @param {Array}
      * @return {Array}
+     * @alias flatMap
      * @example
      *
      * var duplicate = function(n) {
@@ -13232,32 +13233,27 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     R.chain = curry2(checkForMethod('chain', function _chain(f, list) {
         return unnest(map(f, list));
     }));
+    R.flatMap = R.chain;
 
 
     /**
      * Returns the number of elements in the array by returning `arr.length`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig [a] -> Number
      * @param {Array} arr The array to inspect.
      * @return {number} The size of the array.
+     * @alias length
      * @example
      *
-     *      R.size([]); //=> 0
-     *      R.size([1, 2, 3]); //=> 3
+     *      ramda.size([]); //=> 0
+     *      ramda.size([1, 2, 3]); //=> 3
      */
     R.size = function _size(arr) {
         return arr.length;
     };
 
-    /**
-     * @func
-     * @memberOf R
-     * @category List
-     * @see R.size
-     */
     R.length = R.size;
 
 
@@ -13265,14 +13261,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list containing only those items that match a given predicate function.
      * The predicate function is passed one argument: *(value)*.
      *
-     * Note that `R.filter` does not skip deleted or unassigned indices, unlike the native
+     * Note that `ramda.filter` does not skip deleted or unassigned indices, unlike the native
      * `Array.prototype.filter` method. For more details on this behavior, see:
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/filter#Description
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} The new filtered array.
@@ -13281,7 +13276,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var isEven = function(n) {
      *        return n % 2 === 0;
      *      };
-     *      var evens = R.filter(isEven, [1, 2, 3, 4]); // => [2, 4]
+     *      var evens = ramda.filter(isEven, [1, 2, 3, 4]); // => [2, 4]
      */
     var filter = function _filter(fn, list) {
         var idx = -1, len = list.length, result = [];
@@ -13300,20 +13295,18 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Like `filter`, but passes additional parameters to the predicate function. The predicate
      * function is passed three arguments: *(value, index, list)*.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a, i, [a] -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} The new filtered array.
-     * @alias filter.idx
      * @example
      *
      *      var lastTwo = function(val, idx, list) {
      *        return list.length - idx <= 2;
      *      };
-     *      R.filter.idx(lastTwo, [8, 6, 7, 5, 3, 0, 9]); //=> [0, 9]
+     *      ramda.filter.idx(lastTwo, [8, 6, 7, 5, 3, 0, 9]); //=> [0, 9]
      */
     function filterIdx(fn, list) {
         var idx = -1, len = list.length, result = [];
@@ -13324,17 +13317,17 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         }
         return result;
     }
-    R.filter.idx = curry2(filterIdx);
+
+    R.filter.idx = curry2(checkForMethod('filter', filterIdx));
 
 
     /**
      * Similar to `filter`, except that it keeps only values for which the given predicate
      * function returns falsy. The predicate function is passed one argument: *(value)*.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} The new filtered array.
@@ -13343,11 +13336,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var isOdd = function(n) {
      *        return n % 2 === 1;
      *      };
-     *      var evens = R.reject(isOdd, [1, 2, 3, 4]); // => [2, 4]
+     *      var evens = ramda.reject(isOdd, [1, 2, 3, 4]); // => [2, 4]
      */
     var reject = function _reject(fn, list) {
         return filter(not(fn), list);
     };
+
     R.reject = curry2(reject);
 
 
@@ -13355,14 +13349,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Like `reject`, but passes additional parameters to the predicate function. The predicate
      * function is passed three arguments: *(value, index, list)*.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a, i, [a] -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} The new filtered array.
-     * @alias reject.idx
      * @example
      *
      *      var lastTwo = function(val, idx, list) {
@@ -13382,10 +13374,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `false`. Excludes the element that caused the predicate function to fail. The predicate
      * function is passed one argument: *(value)*.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} A new array.
@@ -13408,10 +13399,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list containing the first `n` elements of the given list.  If
      * `n > * list.length`, returns a list of `list.length` elements.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig Number -> [a] -> [a]
      * @param {number} n The number of elements to return.
      * @param {Array} list The array to query.
      * @return {Array} A new array containing the first elements of `list`.
@@ -13427,10 +13417,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `true`. Excludes the element that caused the predicate function to fail. The predicate
      * function is passed one argument: *(value)*.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> [a]
      * @param {Function} fn The function called per iteration.
      * @param {Array} list The collection to iterate over.
      * @return {Array} A new array.
@@ -13452,30 +13441,28 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a new list containing all but the first `n` elements of the given `list`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig Number -> [a] -> [a]
      * @param {number} n The number of elements of `list` to skip.
      * @param {Array} list The array to consider.
      * @return {Array} The last `n` elements of `list`.
-     * @example
-     *
-     *     skip(3, [1,2,3,4,5,6,7]); // => [4,5,6,7]
+     * @alias drop
      */
     R.skip = curry2(checkForMethod('skip', function _skip(n, list) {
         return _slice(list, n);
     }));
+
+    R.drop = R.skip;
 
 
     /**
      * Returns the first element of the list which matches the predicate, or `undefined` if no
      * element matches.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> a | undefined
      * @param {Function} fn The predicate function used to determine if the element is the
      *        desired one.
      * @param {Array} list The array to consider.
@@ -13501,10 +13488,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns the index of the first element of the list which matches the predicate, or `-1`
      * if no element matches.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> Number
      * @param {Function} fn The predicate function used to determine if the element is the
      * desired one.
      * @param {Array} list The array to consider.
@@ -13531,10 +13517,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns the last element of the list which matches the predicate, or `undefined` if no
      * element matches.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> a | undefined
      * @param {Function} fn The predicate function used to determine if the element is the
      * desired one.
      * @param {Array} list The array to consider.
@@ -13547,7 +13532,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.findLast = curry2(function _findLast(fn, list) {
         var idx = list.length;
-        while (idx--) {
+        while (--idx) {
             if (fn(list[idx])) {
                 return list[idx];
             }
@@ -13559,10 +13544,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns the index of the last element of the list which matches the predicate, or
      * `-1` if no element matches.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> Number
      * @param {Function} fn The predicate function used to determine if the element is the
      * desired one.
      * @param {Array} list The array to consider.
@@ -13575,7 +13559,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.findLastIndex = curry2(function _findLastIndex(fn, list) {
         var idx = list.length;
-        while (idx--) {
+        while (--idx) {
             if (fn(list[idx])) {
                 return idx;
             }
@@ -13588,23 +13572,23 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns `true` if all elements of the list match the predicate, `false` if there are any
      * that don't.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> Boolean
      * @param {Function} fn The predicate function.
      * @param {Array} list The array to consider.
      * @return {boolean} `true` if the predicate is satisfied by every element, `false`
      *         otherwise
+     * @alias every
      * @example
      *
      *      var lessThan2 = flip(lt)(2);
      *      var lessThan3 = flip(lt)(3);
      *      var xs = range(1, 3); //= [1, 2]
-     *      every(lessThan2)(xs); //= false
-     *      every(lessThan3)(xs); //= true
+     *      all(lessThan2)(xs); //= false
+     *      all(lessThan3)(xs); //= true
      */
-    function every(fn, list) {
+    function all(fn, list) {
         var i = -1;
         while (++i < list.length) {
             if (!fn(list[i])) {
@@ -13613,30 +13597,32 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         }
         return true;
     }
-    R.every = curry2(every);
+
+    R.all = curry2(all);
+    R.every = R.all;
 
 
     /**
      * Returns `true` if at least one of elements of the list match the predicate, `false`
      * otherwise.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a -> Boolean) -> [a] -> Boolean
      * @param {Function} fn The predicate function.
      * @param {Array} list The array to consider.
      * @return {boolean} `true` if the predicate is satisfied by at least one element, `false`
      *         otherwise
+     * @alias some
      * @example
      *
      *      var lessThan0 = flip(lt)(0);
      *      var lessThan2 = flip(lt)(2);
      *      var xs = range(1, 3); //= [1, 2]
-     *      some(lessThan0)(xs); //= false
-     *      some(lessThan2)(xs); //= true
+     *      any(lessThan0)(xs); //= false
+     *      any(lessThan2)(xs); //= true
      */
-    function some(fn, list) {
+    function any(fn, list) {
         var i = -1;
         while (++i < list.length) {
             if (fn(list[i])) {
@@ -13645,7 +13631,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         }
         return false;
     }
-    R.some = curry2(some);
+    R.any = curry2(any);
+    R.some = R.any;
 
 
     /**
@@ -13668,9 +13655,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
             i = from < 0 ? Math.max(0, length + from) : from;
         }
         for (; i < length; i++) {
-            if (array[i] === item) {
-                return i;
-            }
+            if (array[i] === item) return i;
         }
         return -1;
     };
@@ -13696,9 +13681,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
             idx = from < 0 ? idx + from + 1 : Math.min(idx, from + 1);
         }
         while (--idx >= 0) {
-            if (array[idx] === item) {
-                return idx;
-            }
+            if (array[idx] === item) return idx;
         }
         return -1;
     };
@@ -13709,10 +13692,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * (by strict equality),
      * or -1 if the item is not included in the array.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig a -> [a] -> Number
      * @param target The item to find.
      * @param {Array} list The array to search in.
      * @return {Number} the index of the target, or -1 if the target is not found.
@@ -13733,10 +13715,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `indexOf.from` will only search the tail of the array, starting from the
      * `fromIdx` parameter.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig a -> Number -> [a] -> Number
      * @param target The item to find.
      * @param {Array} list The array to search in.
      * @param {Number} fromIdx the index to start searching from
@@ -13756,10 +13737,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns the position of the last occurrence of an item (by strict equality) in
      * an array, or -1 if the item is not included in the array.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig a -> [a] -> Number
      * @param target The item to find.
      * @param {Array} list The array to search in.
      * @return {Number} the index of the target, or -1 if the target is not found.
@@ -13780,10 +13760,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `lastIndexOf.from` will only search the tail of the array, starting from the
      * `fromIdx` parameter.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig a -> Number -> [a] -> Number
      * @param target The item to find.
      * @param {Array} list The array to search in.
      * @param {Number} fromIdx the index to start searching from
@@ -13803,10 +13782,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns `true` if the specified item is somewhere in the list, `false` otherwise.
      * Equivalent to `indexOf(a)(list) > -1`. Uses strict (`===`) equality checking.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig a -> [a] -> Boolean
      * @param {Object} a The item to compare against.
      * @param {Array} list The array to consider.
      * @return {boolean} `true` if the item is in the list, `false` otherwise.
@@ -13829,20 +13807,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns `true` if the `x` is found in the `list`, using `pred` as an
      * equality predicate for `x`.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category List
-     * @sig (x, a -> Boolean) -> x -> [a] -> Boolean
      * @param {Function} pred :: x -> x -> Bool
      * @param x the item to find
      * @param {Array} list the list to iterate over
      * @return {Boolean} `true` if `x` is in `list`, else `false`
-     * @example
-     *
-     *     var xs = [{x: 12}, {x: 11}, {x: 10}];
-     *     containsWith(function(a, b) { return a.x === b.x; }, {x: 10}, xs); // true
-     *     containsWith(function(a, b) { return a.x === b.x; }, {x: 1}, xs); // false
-     */
+     */ //TODO: add an example
     function containsWith(pred, x, list) {
         var idx = -1, len = list.length;
         while (++idx < len) {
@@ -13861,10 +13832,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Equality is strict here, meaning reference equality for objects and non-coercing equality
      * for primitives.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig [a] -> [a]
      * @param {Array} list The array to consider.
      * @return {Array} The list of unique items.
      * @example
@@ -13888,12 +13858,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 
     /**
      * Returns `true` if all elements are unique, otherwise `false`.
-     * Uniqueness is determined using strict equality (`===`).
+     * Uniquness is determined using strict equality (`===`).
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig [a] -> Boolean
      * @param {Array} list The array to consider.
      * @return {boolean} `true` if all elements are unique, else `false`.
      * @example
@@ -13919,10 +13888,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * upon the value returned by applying the supplied predicate to two list elements. Prefers
      * the first item if two items compare equal based on the predicate.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig (x, a -> Boolean) -> [a] -> [a]
      * @param {Array} list The array to consider.
      * @return {Array} The list of unique items.
      * @example
@@ -13949,10 +13917,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a new list by plucking the same named property off all objects in the list supplied.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig String -> {*} -> [*]
      * @param {string|number} key The key name to pluck off of each object.
      * @param {Array} list The array to consider.
      * @return {Array} The list of values for the given key.
@@ -13998,46 +13965,49 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list by pulling every item out of it (and all its sub-arrays) and putting
      * them in a new array, depth-first.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig [a] -> [b]
      * @param {Array} list The array to consider.
      * @return {Array} The flattened list.
+     * @alias flattenDeep
      * @example
      *
      * flatten([1, 2, [3, 4], 5, [6, [7, 8, [9, [10, 11], 12]]]]);
      * //= [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
      */
     var flatten = R.flatten = makeFlat(true);
+    R.flattenDeep = R.flatten;
 
 
     /**
      * Returns a new list by pulling every item at the first level of nesting out, and putting
      * them in a new array.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig [a] -> [b]
      * @param {Array} list The array to consider.
      * @return {Array} The flattened list.
+     * @alias flattenShallow
      * @example
      *
-     * unnest([1, [2], [[3]]]); //= [1, 2, [3]]
-     * unnest([[1, 2], [3, 4], [5, 6]]); //= [1, 2, 3, 4, 5, 6]
+     * flat([1, [2], [[3]]]);
+     * //= [1, 2, [3]]
+     * flat([[1, 2], [3, 4], [5, 6]]);
+     * //= [1, 2, 3, 4, 5, 6]
      */
     var unnest = R.unnest = makeFlat(false);
+    R.flattenShallow = R.unnest;
 
 
     /**
      * Creates a new list out of the two supplied by applying the function to each
      * equally-positioned pair in the lists.
      *
-     * @function
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a,b -> c) -> a -> b -> [c]
      * @param {Function} fn The function used to combine the two elements into one value.
      * @param {Array} list1 The first array to consider.
      * @param {Array} list2 The second array to consider.
@@ -14061,10 +14031,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Creates a new list out of the two supplied by pairing up equally-positioned items from
      * both lists. Note: `zip` is equivalent to `zipWith(function(a, b) { return [a, b] })`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig a -> b -> [[a,b]]
      * @param {Array} list1 The first array to consider.
      * @param {Array} list2 The second array to consider.
      * @return {Array} The list made by pairing up same-indexed elements of `list1` and `list2`.
@@ -14087,10 +14056,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Creates a new object out of a list of keys and a list of values.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig k -> v -> {k: v}
      * @param {Array} keys The array that will be properties on the output object.
      * @param {Array} values The list of values on the output object.
      * @return {Object} The object made by pairing up same-indexed elements of `keys` and `values`.
@@ -14111,10 +14079,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Creates a new object out of a list key-value pairs.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig [[k,v]] -> {k: v}
      * @param {Array} An array of two-element arrays that will be the keys and values of the ouput object.
      * @return {Object} The object made by pairing up `keys` and `values`.
      * @example
@@ -14137,11 +14104,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Creates a new list out of the two supplied by applying the function
      * to each possible pair in the lists.
      *
-     * @see R.xprod
-     * @func
+     * @see xprod
+     * @static
      * @memberOf R
      * @category List
-     * @sig (a,b -> c) -> a -> b -> [c]
      * @param {Function} fn The function to join pairs with.
      * @param {Array} as The first list.
      * @param {Array} bs The second list.
@@ -14173,10 +14139,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Creates a new list out of the two supplied by creating each possible
      * pair from the lists.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig a -> b -> [[a,b]]
      * @param {Array} as The first list.
      * @param {Array} bs The second list.
      * @return {Array} The list made by combining each possible pair from
@@ -14210,10 +14175,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a new list with the same elements as the original list, just
      * in the reverse order.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig [a] -> [a]
      * @param {Array} list The list to reverse.
      * @return {Array} A copy of the list in reverse order.
      * @example
@@ -14233,10 +14197,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * (exclusive). In mathematical terms, `range(a, b)` is equivalent to
      * the half-open interval `[a, b)`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig Number -> Number -> [Number]
      * @param {number} from The first number in the list.
      * @param {number} to One more than the last number in the list.
      * @return {Array} The list of numbers in tthe set `[a, b)`.
@@ -14261,10 +14224,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a string made by inserting the `separator` between each
      * element and concatenating all the elements into a single string.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig String -> [a] -> String
      * @param {string|number} separator The string used to separate the elements.
      * @param {Array} xs The elements to join into a string.
      * @return {string} The string made by concatenating `xs` with `separator`.
@@ -14280,10 +14242,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns the elements from `xs` starting at `a` and ending at `b - 1`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig Number -> Number -> [a] -> [a]
      * @param {number} a The starting index.
      * @param {number} b One more than the ending index.
      * @param {Array} xs The list to take elements from.
@@ -14299,10 +14260,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns the elements from `xs` starting at `a` going to the end of `xs`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category List
-     * @sig Number -> [a] -> [a]
      * @param {number} a The starting index.
      * @param {Array} xs The list to take elements from.
      * @return {Array} The items from `a` to the end of `xs`.
@@ -14324,10 +14284,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * copy of the list with the changes.
      * <small>No lists have been harmed in the application of this function.</small>
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category List
-     * @sig Number -> Number -> [a] -> [a]
      * @param {Number} start The position to start removing elements
      * @param {Number} count The number of elements to remove
      * @param {Array} list The list to remove from
@@ -14346,10 +14304,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * that this is not destructive_: it returns a copy of the list with the changes.
      * <small>No lists have been harmed in the application of this function.</small>
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category
-     * @sig Number -> a -> [a] -> [a]
      * @param {Number} index The position to insert the element
      * @param elt The element to insert into the Array
      * @param {Array} list The list to insert into
@@ -14369,10 +14325,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * is not destructive_: it returns a copy of the list with the changes.
      * <small>No lists have been harmed in the application of this function.</small>
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category List
-     * @sig Number -> [a] -> [a] -> [a]
      * @param {Number} index The position to insert the sublist
      * @param {Array} elts The sub-list to insert into the Array
      * @param {Array} list The list to insert the sub-list into
@@ -14390,10 +14344,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Makes a comparator function out of a function that reports whether the first element is less than the second.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category Function
-     * @sig (a, b -> Boolean) -> (a, b -> Number)
      * @param {Function} pred A predicate function of arity two.
      * @return {Function} a Function :: a -> b -> Int that returns `-1` if a < b, `1` if b < a, otherwise `0`
      * @example
@@ -14404,7 +14356,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      sort(cmp, people);
      */
     var comparator = R.comparator = function _comparator(pred) {
-        return function(a, b) {
+        return function (a, b) {
             return pred(a, b) ? -1 : pred(b, a) ? 1 : 0;
         };
     };
@@ -14415,10 +14367,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * time and return a negative number if the first value is smaller, a positive number if it's larger, and zero
      * if they are equal.  Please note that this is a **copy** of the list.  It does not modify the original.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category List
-     * @sig (a,a -> Number) -> [a] -> [a]
      * @param {Function} comparator A sorting function :: a -> b -> Int
      * @param {Array} list The list to sort
      * @return {Array} a new array with its elements sorted by the comparator function.
@@ -14435,10 +14385,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Splits a list into sublists stored in an object, based on the result of calling a String-returning function
      * on each element, and grouping the results according to values returned.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category List
-     * @sig (a -> s) -> [a] -> {s: a}
      * @param {Function} fn Function :: a -> String
      * @param {Array} list The array to group
      * @return {Object} An object with the output of `fn` for keys, mapped to arrays of elements
@@ -14462,7 +14410,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *     // }
      */
     R.groupBy = curry2(function _groupBy(fn, list) {
-        return foldl(function(acc, elt) {
+        return foldl(function (acc, elt) {
             var key = fn(elt);
             acc[key] = append(elt, acc[key] || (acc[key] = []));
             return acc;
@@ -14474,10 +14422,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Takes a predicate and a list and returns the pair of lists of
      * elements which do and do not satisfy the predicate, respectively.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category List
-     * @sig (a -> Boolean) -> [a] -> [[a],[a]]
      * @param {Function} pred Function :: a -> Boolean
      * @param {Array} list The array to partition
      * @return {Array} A nested array, containing first an array of elements that satisfied the predicate,
@@ -14488,7 +14434,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *     // => [ [ 'sss', 'bars' ],  [ 'ttt', 'foo' ] ]
      */
     R.partition = curry2(function _partition(pred, list) {
-        return foldl(function(acc, elt) {
+        return foldl(function (acc, elt) {
             acc[pred(elt) ? 0 : 1].push(elt);
             return acc;
         }, [[], []], list);
@@ -14509,10 +14455,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Runs the given function with the supplied object, then returns the object.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category Function
-     * @sig a -> (a -> *) -> a
      * @param {*} x
      * @param {Function} fn The function to call with `x`. The return value of `fn` will be thrown away.
      * @return {*} x
@@ -14530,10 +14474,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Tests if two items are equal.  Equality is strict here, meaning reference equality for objects and
      * non-coercing equality for primitives.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @category Relation
-     * @sig a -> b -> Boolean
      * @param {*} a
      * @param {*} b
      * @return {Boolean}
@@ -14545,25 +14487,30 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      eq(1, 1) // => true
      *      eq(1, '1') // => false
      */
-    R.eq = curry2(function _eq(a, b) { return a === b; });
+    R.eq = function _eq(a, b) {
+        return arguments.length < 2 ? function _eq(b) { return a === b; } : a === b;
+    };
 
 
     /**
      * Returns a function that when supplied an object returns the indicated property of that object, if it exists.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig s -> {s: a} -> a
      * @param {String} p The property name
      * @param {Object} obj The object to query
      * @return {*} The value at obj.p
+     * @alias nth
+     * @alias get
      * @example
      *
      *      prop('x', {x: 100}) // => 100
      *      prop('x', {}) // => undefined
      *
-     *      var fifth = prop(4); // indexed from 0, remember
+     *      // or via the `nth` alias:
+     *
+     *      var fifth = nth(4); // indexed from 0, remember
      *      fifth(['Bashful', 'Doc', 'Dopey', 'Grumpy', 'Happy', 'Sleepy', 'Sneezy']);
      *      //=> 'Happy'
      */
@@ -14575,24 +14522,17 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
         return obj[p];
     };
 
-    /**
-     * @func
-     * @memberOf R
-     * @category Object
-     * @see R.prop
-     */
-    R.get = R.prop;
+    R.nth = R.get = R.prop;
 
 
     /**
      * Returns the value at the specified property.
      * The only difference from `prop` is the parameter order.
      *
-     * @func
+     * @static
      * @memberOf R
-     * @see R.prop
+     * @see prop
      * @category Object
-     * @sig {s: a} -> s -> a
      * @param {Object} obj The object to query
      * @param {String} prop The property name
      * @return {*} The value at obj.p
@@ -14615,10 +14555,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * returns the value of that property.
      * Otherwise returns the provided default value.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig s -> v -> {s: x} -> x | v
      * @param {String} p The name of the property to return.
      * @param {*} val The default value.
      * @returns {*} The value of given property or default value.
@@ -14644,10 +14583,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * after `fn` and `obj` are passed in to `fn`. If no additional arguments are passed to `func`,
      * `fn` is invoked with no arguments.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig k -> {k : v} -> v(*)
      * @param {String} fn The name of the property mapped to the function to invoke
      * @param {Object} obj The object
      * @return {*} The value of invoking `obj.fn`
@@ -14658,11 +14596,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      var obj = { f: function() { return 'f called'; } };
      *      func('f', obj); // => 'f called'
      */
-    R.func = function func(funcName, obj) {
+    R.func = function func(fn, obj) { // TODO: change param name: reserve `fn` for functions, not names?
         switch (arguments.length) {
             case 0: throw NO_ARGS_EXCEPTION;
-            case 1: return function(obj) { return obj[funcName].apply(obj, _slice(arguments, 1)); };
-            default: return obj[funcName].apply(obj, _slice(arguments, 2));
+            case 1: return function(obj) { return obj[fn].apply(obj, _slice(arguments, 1)); };
+            default: return obj[fn].apply(obj, _slice(arguments, 2));
         }
     };
 
@@ -14670,22 +14608,46 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a function that always returns the given value.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Function
-     * @sig a -> (* -> a)
      * @param {*} val The value to wrap in a function
      * @return {Function} A Function :: * -> val
+     * @alias constant
+     * @alias K
      * @example
      *
      *      var t = always('Tee');
      *      t(); // => 'Tee'
      */
     var always = R.always = function _always(val) {
-        return function() {
+        return function () {
             return val;
         };
     };
+
+    R.constant = R.K = R.always;
+
+
+    /**
+     * Scans a list for a `null` or `undefined` element.
+     * Returns true if it finds one, false otherwise.
+     *
+     * @static
+     * @memberOf R
+     * @category list
+     * @param {Array} list The array to scan
+     * @return {Boolean}
+     * @example
+     *
+     *      anyBlanks([1,2,null,3,4]); // => true
+     *      anyBlanks([1,2,undefined,3,4]); // => true
+     *      anyBlanks([1,2,3,4]); // => false
+     *      anyBlanks([]); // => false
+     */
+    var anyBlanks = R.any(function _any(val) {
+        return val == null;
+    });
 
 
     /**
@@ -14704,10 +14666,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig {k: v} -> [k]
      * @param {Object} obj The object to extract properties from
      * @return {Array} An array of the object's own properties
      * @example
@@ -14715,9 +14676,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      keys({a: 1, b: 2, c: 3}) // => ['a', 'b', 'c']
      */
     var keys = R.keys = function _keys(obj) {
-        if (nativeKeys) {
-            return nativeKeys(Object(obj));
-        }
+        if (nativeKeys) return nativeKeys(Object(obj));
         var prop, ks = [];
         for (prop in obj) {
             if (hasOwnProperty.call(obj, prop)) {
@@ -14734,10 +14693,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig {k: v} -> [k]
      * @param {Object} obj The object to extract properties from
      * @return {Array} An array of the object's own and prototype properties
      * @example
@@ -14775,10 +14733,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig {k: v} -> [[k,v]]
      * @param {Object} obj The object to extract from
      * @return {Array} An array of key, value arrays from the object's own properties
      * @example
@@ -14794,10 +14751,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig {k: v} -> [[k,v]]
      * @param {Object} obj The object to extract from
      * @return {Array} An array of key, value arrays from the object's own
      *         and prototype properties
@@ -14816,10 +14772,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed across
      * different JS platforms.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig {k: v} -> [v]
      * @param {Object} obj The object to extract values from
      * @return {Array} An array of the values of the object's own properties
      * @example
@@ -14843,10 +14798,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that the order of the output array is not guaranteed to be
      * consistent across different JS platforms.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig {k: v} -> [v]
      * @param {Object} obj The object to extract values from
      * @return {Array} An array of the values of the object's own and prototype properties
      * @example
@@ -14890,10 +14844,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a partial copy of an object containing only the keys specified.  If the key does not exist, the
      * property is ignored.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig [k] -> {k: v} -> {k: v}
      * @param {Array} names an array of String propery names to copy onto a new object
      * @param {Object} obj The object to copy from
      * @return {Object} A new object with only properties from `names` on it.
@@ -14912,10 +14865,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a partial copy of an object omitting the keys specified.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig [k] -> {k: v} -> {k: v}
      * @param {Array} names an array of String propery names to omit from the new object
      * @param {Object} obj The object to copy from
      * @return {Object} A new object with properties from `names` not on it.
@@ -14934,16 +14886,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Returns a partial copy of an object containing only the keys that
      * satisfy the supplied predicate.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig (v, k -> Boolean) -> {k: v} -> {k: v}
      * @param {Function} pred A predicate to determine whether or not a key
      *        should be included on the output object.
      * @param {Object} obj The object to copy from
      * @return {Object} A new object with only properties that satisfy `pred`
      *         on it.
-     * @see R.pick
+     * @see pick
      * @example
      *
      *      function isUpperCase(x) { return x.toUpperCase() === x; }
@@ -14956,12 +14907,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Internal implementation of `pickAll`
      *
      * @private
-     * @see R.pickAll
+     * @see pickAll
      */
     // TODO: document, even for internals...
     var pickAll = function _pickAll(names, obj) {
         var copy = {};
-        forEach(function(name) {
+        each(function (name) {
             copy[name] = obj[name];
         }, names);
         return copy;
@@ -14971,18 +14922,17 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Similar to `pick` except that this one includes a `key: undefined` pair for properties that don't exist.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig [k] -> {k: v} -> {k: v}
      * @param {Array} names an array of String propery names to copy onto a new object
      * @param {Object} obj The object to copy from
      * @return {Object} A new object with only properties from `names` on it.
-     * @see R.pick
+     * @see pick
      * @example
      *
-     *      pickAll(['a', 'd'], {a: 1, b: 2, c: 3, d: 4}) // => {a: 1, d: 4}
-     *      pickAll(['a', 'e', 'f'], {a: 1, b: 2, c: 3, d: 4}) // => {a: 1, e: undefined, f: undefined}
+     *      pick(['a', 'd'], {a: 1, b: 2, c: 3, d: 4}) // => {a: 1, d: 4}
+     *      pick(['a', 'e', 'f'], {a: 1, b: 2, c: 3, d: 4}) // => {a: 1, e: undefined, f: undefined}
      */
     R.pickAll = curry2(pickAll);
 
@@ -15017,10 +14967,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * merged with the own properties of object b.
      * This function will *not* mutate passed-in objects.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig {k: v} -> {k: v} -> {k: v}
      * @param {Object} a source object
      * @param {Object} b object with higher precendence in output
      * @returns {Object} Returns the destination object.
@@ -15037,10 +14986,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Reports whether two functions have the same value for the specified property.  Useful as a curried predicate.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig k -> {k: v} -> {k: v} -> Boolean
      * @param {String} prop The name of the property to compare
      * @param {Object} obj1
      * @param {Object} obj2
@@ -15062,7 +15010,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * internal helper for `where`
      *
      * @private
-     * @see R.where
+     * @see where
      */
     function satisfiesSpec(spec, parsedSpec, testObj) {
         if (spec === testObj) { return true; }
@@ -15104,10 +15052,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * `where` is well suited to declarativley expressing constraints for other functions, e.g.,
      * `filter`, `find`, `pickWith`, etc.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig {k: v} -> {k: v} -> Boolean
      * @param {Object} spec
      * @param {Object} testObj
      * @return {Boolean}
@@ -15126,9 +15073,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.where = function where(spec, testObj) {
         var parsedSpec = R.groupBy(function(key) {
-            return typeof spec[key] === 'function' ? 'fn' : 'obj';
-        }, keys(spec));
-
+                return typeof spec[key] === 'function' ? 'fn' : 'obj';
+            }, keys(spec)
+        );
         switch (arguments.length) {
             case 0: throw NO_ARGS_EXCEPTION;
             case 1:
@@ -15154,10 +15101,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * functions become global functions.
      * Warning: This function *will* mutate the object provided.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category Object
-     * @sig -> {*} -> {*}
      * @param {Object} obj The object to attach ramda functions
      * @return {Object} a reference to the mutated object
      * @example
@@ -15175,10 +15121,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * See if an object (`val`) is an instance of the supplied constructor.
      * This function will check up the inheritance chain, if any.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category type
-     * @sig (* -> {*}) -> a -> Boolean
      * @param {Object} ctor A constructor
      * @param {*} val The value to test
      * @return {Boolean}
@@ -15186,11 +15131,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      *      is(Object, {}) // => true
      *      is(Number, 1) // => true
-     *      is(Object, 1) // => false
      *      is(String, 's') // => true
      *      is(String, new String('')) // => true
      *      is(Object, new String('')) // => true
-     *      is(Object, 's') // => false
      *      is(Number, {}) // => false
      */
     R.is = curry2(function is(ctor, val) {
@@ -15201,11 +15144,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * A function that always returns `0`. Any passed in parameters are ignored.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category function
-     * @sig * -> 0
-     * @see R.always
+     * @see always
      * @return {Number} 0. Always zero.
      * @example
      *
@@ -15217,11 +15159,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * A function that always returns `false`. Any passed in parameters are ignored.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category function
-     * @sig * -> false
-     * @see R.always
+     * @see always
      * @return {Boolean} false
      * @example
      *
@@ -15233,11 +15174,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * A function that always returns `true`. Any passed in parameters are ignored.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category function
-     * @sig * -> true
-     * @see R.always
+     * @see always
      * @return {Boolean} true
      * @example
      *
@@ -15261,10 +15201,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * this is short-circuited, meaning that the second function will not be invoked if the first returns a false-y
      * value.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category logic
-     * @sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
      * @param {Function} f a predicate
      * @param {Function} g another predicate
      * @return {Function} a function that applies its arguments to `f` and `g` and ANDs their outputs together.
@@ -15288,10 +15227,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * this is short-circuited, meaning that the second function will not be invoked if the first returns a truth-y
      * value.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category logic
-     * @sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
      * @param {Function} f a predicate
      * @param {Function} g another predicate
      * @return {Function} a function that applies its arguments to `f` and `g` and ORs their outputs together.
@@ -15314,10 +15252,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * A function wrapping a call to the given function in a `!` operation.  It will return `true` when the
      * underlying function would return a false-y value, and `false` when it would return a truth-y one.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category logic
-     * @sig (*... -> Boolean) -> (*... -> Boolean)
      * @param {Function} f a predicate
      * @return {Function} a function that applies its arguments to `f` and logically inverts its output.
      * @example
@@ -15336,8 +15273,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Create a predicate wrapper which will call a pick function (all/any) for each predicate
      *
      * @private
-     * @see R.every
-     * @see R.some
+     * @see all, any
      */
     // TODO: document, even for internals...
     var predicateWrap = function _predicateWrap(predPicker) {
@@ -15358,12 +15294,11 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 
 
     /**
-     * Given a list of predicates, returns a new predicate that will be true exactly when all of them are.
+     * Given a list of predicates returns a new predicate that will be true exactly when all of them are.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category logic
-     * @sig [(*... -> Boolean)] -> (*... -> Boolean)
      * @param {Array} list An array of predicate functions
      * @param {*} optional Any arguments to pass into the predicates
      * @return {Function} a function that applies its arguments to each of
@@ -15376,16 +15311,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      f(11) // => false
      *      f(12) // => true
      */
-    R.allPredicates = predicateWrap(every);
+    R.allPredicates = predicateWrap(all);
 
 
     /**
      * Given a list of predicates returns a new predicate that will be true exactly when any one of them is.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category logic
-     * @sig [(*... -> Boolean)] -> (*... -> Boolean)
      * @param {Array} list An array of predicate functions
      * @param {*} optional Any arguments to pass into the predicates
      * @return {Function}  a function that applies its arguments to each of the predicates, returning
@@ -15399,7 +15333,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      f(8) // => true
      *      f(9) // => false
      */
-    R.anyPredicates = predicateWrap(some);
+    R.anyPredicates = predicateWrap(any);
 
 
 
@@ -15414,11 +15348,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Adds two numbers (or strings). Equivalent to `a + b` but curried.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
-     * @sig String -> String -> String
      * @param {number|string} a The first value.
      * @param {number|string} b The second value.
      * @return {number|string} The result of `a + b`.
@@ -15435,10 +15367,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Multiplies two numbers. Equivalent to `a * b` but curried.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
      * @param {number} a The first value.
      * @param {number} b The second value.
      * @return {number} The result of `a * b`.
@@ -15456,14 +15387,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Subtracts two numbers. Equivalent to `a - b` but curried.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
      * @param {number} a The first value.
      * @param {number} b The second value.
      * @return {number} The result of `a - b`.
-     * @see R.subtractN
+     * @see subtractN
      * @example
      *
      *      var complementaryAngle = subtract(90);
@@ -15482,10 +15412,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * curried. Probably more useful when partially applied than
      * `subtract`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
      * @param {number} a The first value.
      * @param {number} b The second value.
      * @return {number} The result of `a - b`.
@@ -15507,14 +15436,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * While at times the curried version of `divide` might be useful,
      * probably the curried version of `divideBy` will be more useful.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
      * @param {number} a The first value.
      * @param {number} b The second value.
      * @return {number} The result of `a / b`.
-     * @see R.divideBy
+     * @see divideBy
      * @example
      *
      *      var reciprocal = divide(1);
@@ -15530,14 +15458,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * divided by the first.  The curried version of `divideBy` may prove more useful
      * than that of `divide`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
      * @param {number} a The second value.
      * @param {number} b The first value.
      * @return {number} The result of `b / a`.
-     * @see R.divide
+     * @see divide
      * @example
      *
      *      var half = divideBy(2);
@@ -15552,15 +15479,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Note that this functions preserves the JavaScript-style behavior for
      * modulo. For mathematical modulo see `mathMod`
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
      * @param {number} a The value to the divide.
      * @param {number} b The pseudo-modulus
      * @return {number} The result of `b % a`.
-     * @see R.moduloBy
-     * @see R.mathMod
+     * @see moduloBy, mathMod
      * @example
      *
      *      modulo(17, 3) // => 2
@@ -15587,18 +15512,17 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
 
     /**
      * mathMod behaves like the modulo operator should mathematically, unlike the `%`
-     * operator (and by extension, R.modulo). So while "-17 % 5" is -2,
+     * operator (and by extension, ramda.modulo). So while "-17 % 5" is -2,
      * mathMod(-17, 5) is 3. mathMod requires Integer arguments, and returns NaN
      * when the modulus is zero or negative.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
      * @param {number} m The dividend.
      * @param {number} p the modulus.
      * @return {number} The result of `b mod a`.
-     * @see R.moduloBy
+     * @see moduloBy
      * @example
      *
      *      mathMod(-17, 5)  // 3
@@ -15609,8 +15533,8 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *      mathMod(17, 5.3) // NaN
      */
     R.mathMod = curry2(function _mathMod(m, p) {
-        if (!isInteger(m)) { return NaN; }
-        if (!isInteger(p) || p < 1) { return NaN; }
+        if (!isInteger(m) || m < 1) { return NaN; }
+        if (!isInteger(p)) { return NaN; }
         return ((m % p) + p) % p;
     });
 
@@ -15619,14 +15543,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Reversed version of `modulo`, where the second parameter is divided by the first.  The curried version of
      * this one might be more useful than that of `modulo`.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Number
      * @param {number} m The dividend.
      * @param {number} p the modulus.
      * @return {number} The result of `b mod a`.
-     * @see R.modulo
+     * @see modulo
      * @example
      *
      *      var isOdd = moduloBy(2);
@@ -15639,10 +15562,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Adds together all the elements of a list.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig [Number] -> Number
      * @param {Array} list An array of numbers
      * @return {number} The sum of all the numbers in the list.
      * @see reduce
@@ -15656,10 +15578,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Multiplies together all the elements of a list.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig [Number] -> Number
      * @param {Array} list An array of numbers
      * @return {number} The product of all the numbers in the list.
      * @see reduce
@@ -15673,10 +15594,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns true if the first parameter is less than the second.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Boolean
      * @param {Number} a
      * @param {Number} b
      * @return {Boolean} a < b
@@ -15692,10 +15612,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns true if the first parameter is less than or equal to the second.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Boolean
      * @param {Number} a
      * @param {Number} b
      * @return {Boolean} a <= b
@@ -15711,10 +15630,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns true if the first parameter is greater than the second.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Boolean
      * @param {Number} a
      * @param {Number} b
      * @return {Boolean} a > b
@@ -15730,10 +15648,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns true if the first parameter is greater than or equal to the second.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig Number -> Number -> Boolean
      * @param {Number} a
      * @param {Number} b
      * @return {Boolean} a >= b
@@ -15749,11 +15666,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Determines the largest of a list of numbers (or elements that can be cast to numbers)
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig [Number] -> Number
-     * @see R.maxWith
+     * @see maxWith
      * @param {Array} list A list of numbers
      * @return {Number} The greatest number in the list
      * @example
@@ -15768,14 +15684,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Determines the largest of a list of items as determined by pairwise comparisons from the supplied comparator
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig (a -> Number) -> [a] -> a
      * @param {Function} keyFn A comparator function for elements in the list
      * @param {Array} list A list of comparable elements
      * @return {*} The greatest element in the list. `undefined` if the list is empty.
-     * @see R.max
+     * @see max
      * @example
      *
      *      function cmp(obj) { return obj.x; }
@@ -15784,7 +15699,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      */
     R.maxWith = curry2(function _maxWith(keyFn, list) {
         if (!(list && list.length > 0)) {
-            return;
+           return;
         }
         var idx = 0, winner = list[idx], max = keyFn(winner), testKey;
         while (++idx < list.length) {
@@ -15801,13 +15716,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Determines the smallest of a list of items as determined by pairwise comparisons from the supplied comparator
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig (a -> Number) -> [a] -> a
      * @param {Function} keyFn A comparator function for elements in the list
      * @param {Array} list A list of comparable elements
-     * @see R.min
+     * @see min
      * @return {*} The greatest element in the list. `undefined` if the list is empty.
      * @example
      *
@@ -15835,13 +15749,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Determines the smallest of a list of numbers (or elements that can be cast to numbers)
      *
-     * @func
+     * @static
      * @memberOf R
      * @category math
-     * @sig [Number] -> Number
      * @param {Array} list A list of numbers
      * @return {Number} The greatest number in the list
-     * @see R.minWith
+     * @see minWith
      * @example
      *
      *      min([7, 3, 9, 2, 4, 9, 3]) // => 2
@@ -15862,15 +15775,14 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * returns a subset of a string between one index and another.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig Number -> Number -> String -> String
      * @param {Number} indexA An integer between 0 and the length of the string.
      * @param {Number} indexB An integer between 0 and the length of the string.
      * @param {String} The string to extract from
      * @return {String} the extracted substring
-     * @see R.invoker
+     * @see invoker
      * @example
      *
      *      substring(2, 5, 'abcdefghijklm'); //=> 'cde'
@@ -15881,14 +15793,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The trailing substring of a String starting with the nth character:
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig Number -> String -> String
      * @param {Number} indexA An integer between 0 and the length of the string.
      * @param {String} The string to extract from
      * @return {String} the extracted substring
-     * @see R.invoker
+     * @see invoker
      * @example
      *
      *      substringFrom(8, 'abcdefghijklm'); //=> 'ijklm'
@@ -15899,14 +15810,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The leading substring of a String ending before the nth character:
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig Number -> String -> String
      * @param {Number} indexA An integer between 0 and the length of the string.
      * @param {String} The string to extract from
      * @return {String} the extracted substring
-     * @see R.invoker
+     * @see invoker
      * @example
      *
      *      substringTo(8, 'abcdefghijklm'); //=> 'abcdefgh'
@@ -15917,14 +15827,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The character at the nth position in a String:
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig Number -> String -> String
      * @param {Number} index An integer between 0 and the length of the string.
      * @param {String} str The string to extract a char from
      * @return {String} the character at `index` of `str`
-     * @see R.invoker
+     * @see invoker
      * @example
      *
      *      charAt(8, 'abcdefghijklm'); //=> 'i'
@@ -15935,14 +15844,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The ascii code of the character at the nth position in a String:
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig Number -> String -> Number
      * @param {Number} index An integer between 0 and the length of the string.
      * @param {String} str The string to extract a charCode from
      * @return {Number} the code of the character at `index` of `str`
-     * @see R.invoker
+     * @see invoker
      * @example
      *
      *      charCodeAt(8, 'abcdefghijklm'); //=> 105
@@ -15954,14 +15862,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Tests a regular expression agains a String
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig RegExp -> String -> [String] | null
      * @param {RegExp} rx A regular expression.
      * @param {String} str The string to match against
      * @return {Array} The list of matches, or null if no matches found
-     * @see R.invoker
+     * @see invoker
      * @example
      *
      *      match(/([a-z]a)/g, 'bananas'); //=> ['ba', 'na', 'na']
@@ -15972,14 +15879,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Finds the first index of a substring in a string, returning -1 if it's not present
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig String -> String -> Number
      * @param {String} c A string to find.
      * @param {String} str The string to search in
      * @return {Number} The first index of `c` or -1 if not found
-     * @see R.invoker
+     * @see invoker
      * @example
      *
      *      strIndexOf('c', 'abcdefg) //=> 2
@@ -15991,14 +15897,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      *
      * Finds the last index of a substring in a string, returning -1 if it's not present
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig String -> String -> Number
      * @param {String} c A string to find.
      * @param {String} str The string to search in
      * @return {Number} The last index of `c` or -1 if not found
-     * @see R.invoker
+     * @see invoker
      * @example
      *
      *      strLastIndexOf('a', 'banana split') //=> 5
@@ -16009,10 +15914,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The upper case version of a string.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig String -> String
      * @param {string} str The string to upper case.
      * @return {string} The upper case version of `str`.
      * @example
@@ -16025,10 +15929,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * The lower case version of a string.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig String -> String
      * @param {string} str The string to lower case.
      * @return {string} The lower case version of `str`.
      * @example
@@ -16042,10 +15945,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Splits a string into an array of strings based on the given
      * separator.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig String -> String -> [String]
      * @param {string} sep The separator string.
      * @param {string} str The string to separate into an array.
      * @return {Array} The array of strings from `str` separated by `str`.
@@ -16091,10 +15993,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Retrieve a nested path on an object seperated by the specified
      * separator value.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig String -> String -> {*} -> *
      * @param {string} sep The separator to use in `path`.
      * @param {string} path The path to use.
      * @return {*} The data at `path`.
@@ -16110,10 +16011,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Retrieve a nested path on an object seperated by periods
      *
-     * @func
+     * @static
      * @memberOf R
      * @category string
-     * @sig String -> {*} -> *
      * @param {string} path The dot path to use.
      * @return {*} The data at `path`.
      * @example
@@ -16135,11 +16035,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Reasonable analog to SQL `select` statement.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category object
      * @category relation
-     * @string [k] -> [{k: v}] -> [{k: v}]
      * @param {Array} props The property names to project
      * @param {Array} objs The objects to query
      * @return {Array} An array of objects with just the `props` properties.
@@ -16158,10 +16057,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * value according to strict equality (`===`).  Most likely used to
      * filter a list:
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig k -> v -> {k: v} -> Boolean
      * @param {string|number} name The property name (or index) to use.
      * @param {*} val The value to compare the property with.
      * @return {boolean} `true` if the properties are equal, `false` otherwise.
@@ -16184,10 +16082,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Combines two lists into a set (i.e. no duplicates) composed of the
      * elements of each list.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig [a] -> [a] -> [a]
      * @param {Array} as The first list.
      * @param {Array} bs The second list.
      * @return {Array} The first and second lists concatenated, with
@@ -16203,16 +16100,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Combines two lists into a set (i.e. no duplicates) composed of the elements of each list.  Duplication is
      * determined according to the value returned by applying the supplied predicate to two list elements.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig (a,a -> Boolean) -> [a] -> [a] -> [a]
      * @param {Function} pred
      * @param {Array} list1 The first list.
      * @param {Array} list2 The second list.
      * @return {Array} The first and second lists concatenated, with
      *         duplicates removed.
-     * @see R.union
+     * @see union
      * @example
      *
      *      function cmp(x, y) { return x.a === y.a; }
@@ -16228,14 +16124,13 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Finds the set (i.e. no duplicates) of all elements in the first list not contained in the second list.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig [a] -> [a] -> [a]
      * @param {Array} list1 The first list.
      * @param {Array} list2 The second list.
      * @return {Array} The elements in `list1` that are not in `list2`
-     * @see R.differenceWith
+     * @see differenceWith
      * @example
      *
      *      difference([1,2,3,4], [7,6,5,4,3]); //= [1,2]
@@ -16251,15 +16146,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * Duplication is determined according to the value returned by applying the supplied predicate to two list
      * elements.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig (a,a -> Boolean) -> [a] -> [a] -> [a]
      * @param {Function} pred
      * @param {Array} list1 The first list.
      * @param {Array} list2 The second list.
-     * @see R.difference
-     * @return {Array} The elements in `list1` that are not in `list2`
+     * @see difference
+     * @return {Array} The first and second lists concatenated, with
+     *                 duplicates removed.
      * @example
      *
      *      function cmp(x, y) { return x.a === y.a; }
@@ -16276,13 +16171,12 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Combines two lists into a set (i.e. no duplicates) composed of those elements common to both lists.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig [a] -> [a] -> [a]
      * @param {Array} list1 The first list.
      * @param {Array} list2 The second list.
-     * @see R.intersectionWith
+     * @see intersectionWith
      * @return {Array} The list of elements found in both `list1` and `list2`
      * @example
      *
@@ -16299,16 +16193,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * to the value returned by applying the supplied predicate to two list
      * elements.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig (a,a -> Boolean) -> [a] -> [a] -> [a]
      * @param {Function} pred A predicate function that determines whether
      *        the two supplied elements are equal.
      *        Signatrue: a -> a -> Boolean
      * @param {Array} list1 One list of items to compare
      * @param {Array} list2 A second list of items to compare
-     * @see R.intersection
+     * @see intersection
      * @return {Array} A new list containing those elements common to both lists.
      * @example
      *
@@ -16351,7 +16244,7 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * is the result of applying the supplied function to that item.
      *
      * @private
-     * @func
+     * @static
      * @memberOf R
      * @category relation
      * @param {Function} fn An arbitrary unary function returning a potential
@@ -16390,16 +16283,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Sorts the list according to a key generated by the supplied function.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig (a -> String) -> [a] -> [a]
      * @param {Function} fn The function mapping `list` items to keys.
      * @param {Array} list The list to sort.
      * @return {Array} A new list sorted by the keys generated by `fn`.
      * @example
      *
-     *      var sortByFirstItem = sortBy(prop(0));
+     *      var sortByFirstItem = sortBy(nth(0));
      *      var sortByNameCaseInsensitive = sortBy(compose(toLowerCase, prop('name')));
      *      var pairs = [[-1, 1], [-2, 2], [-3, 3]];
      *      sortByFirstItem(pairs); //= [[-3, 3], [-2, 2], [-1, 1]]
@@ -16430,10 +16322,9 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
      * the list. Note that all keys are coerced to strings because of how
      * JavaScript objects work.
      *
-     * @func
+     * @static
      * @memberOf R
      * @category relation
-     * @sig (a -> String) -> [a] -> {*}
      * @param {Function} fn The function used to map values to keys.
      * @param {Array} list The list to count elements from.
      * @return {Object} An object mapping keys to number of occurrences in the list.
@@ -16468,20 +16359,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a list of function names of object's own functions
      *
-     * @func
+     * @static .
      * @memberOf R
      * @category Object
-     * @sig {*} -> [String]
      * @param {Object} obj The objects with functions in it
-     * @return {Array} returns a list of the object's own properites that map to functions
-     * @example
+     * @return {Array} returns list of object's own function names
+     * @example .
      *
      *      R.functions(R) // => returns list of ramda's own function names
-     *
-     *      var F = function() { this.x = function(){}; this.y = 1; }
-     *      F.prototype.z = function() {};
-     *      F.prototype.a = 100;
-     *      R.functions(new F()); // ["x"];
+     *      R.functions(this) // => returns list of function names in global scope's own function names
      */
     R.functions = functionsWith(R.keys);
 
@@ -16489,21 +16375,15 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     /**
      * Returns a list of function names of object's own and prototype functions
      *
-     * @func
+     * @static .
      * @memberOf R
      * @category Object
-     * @sig {*} -> [String]
      * @param {Object} obj The objects with functions in it
-     * @return {Array} returns a list of the object's own properites and prototype
-     *                 properties that map to functions
-     * @example
+     * @return {Array} returns list of object's own and prototype function names
+     * @example .
      *
      *      R.functionsIn(R) // => returns list of ramda's own and prototype function names
-     *
-     *      var F = function() { this.x = function(){}; this.y = 1; }
-     *      F.prototype.z = function() {};
-     *      F.prototype.a = 100;
-     *      R.functionsIn(new F()); // ["x", "z"];
+     *      R.functionsIn(this) // => returns list of function names in global scope's own and prototype function names
      */
     R.functionsIn = functionsWith(R.keysIn);
 
@@ -16512,10 +16392,10 @@ module.exports = {"name":"fluxxor","version":"1.3.2","description":"Flux archite
     return R;
 }));
 
-},{}],75:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 module.exports = require('./lib/ReactWithAddons');
 
-},{"./lib/ReactWithAddons":163}],76:[function(require,module,exports){
+},{"./lib/ReactWithAddons":165}],78:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -16549,7 +16429,7 @@ var AutoFocusMixin = {
 
 module.exports = AutoFocusMixin;
 
-},{"./focusNode":195}],77:[function(require,module,exports){
+},{"./focusNode":197}],79:[function(require,module,exports){
 /**
  * Copyright 2013 Facebook, Inc.
  *
@@ -16773,7 +16653,7 @@ var BeforeInputEventPlugin = {
 
 module.exports = BeforeInputEventPlugin;
 
-},{"./EventConstants":91,"./EventPropagators":96,"./ExecutionEnvironment":97,"./SyntheticInputEvent":173,"./keyOf":216}],78:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPropagators":98,"./ExecutionEnvironment":99,"./SyntheticInputEvent":175,"./keyOf":218}],80:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -16892,7 +16772,7 @@ var CSSCore = {
 module.exports = CSSCore;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],79:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],81:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -17015,7 +16895,7 @@ var CSSProperty = {
 
 module.exports = CSSProperty;
 
-},{}],80:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -17114,7 +16994,7 @@ var CSSPropertyOperations = {
 
 module.exports = CSSPropertyOperations;
 
-},{"./CSSProperty":79,"./dangerousStyleValue":190,"./hyphenateStyleName":207,"./memoizeStringOnly":218}],81:[function(require,module,exports){
+},{"./CSSProperty":81,"./dangerousStyleValue":192,"./hyphenateStyleName":209,"./memoizeStringOnly":220}],83:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -17221,7 +17101,7 @@ PooledClass.addPoolingTo(CallbackQueue);
 module.exports = CallbackQueue;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./PooledClass":103,"./invariant":209,"./mixInto":222,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],82:[function(require,module,exports){
+},{"./PooledClass":105,"./invariant":211,"./mixInto":224,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],84:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -17610,7 +17490,7 @@ var ChangeEventPlugin = {
 
 module.exports = ChangeEventPlugin;
 
-},{"./EventConstants":91,"./EventPluginHub":93,"./EventPropagators":96,"./ExecutionEnvironment":97,"./ReactUpdates":162,"./SyntheticEvent":171,"./isEventSupported":210,"./isTextInputElement":212,"./keyOf":216}],83:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPluginHub":95,"./EventPropagators":98,"./ExecutionEnvironment":99,"./ReactUpdates":164,"./SyntheticEvent":173,"./isEventSupported":212,"./isTextInputElement":214,"./keyOf":218}],85:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -17642,7 +17522,7 @@ var ClientReactRootIndex = {
 
 module.exports = ClientReactRootIndex;
 
-},{}],84:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -17908,7 +17788,7 @@ var CompositionEventPlugin = {
 
 module.exports = CompositionEventPlugin;
 
-},{"./EventConstants":91,"./EventPropagators":96,"./ExecutionEnvironment":97,"./ReactInputSelection":138,"./SyntheticCompositionEvent":169,"./getTextContentAccessor":204,"./keyOf":216}],85:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPropagators":98,"./ExecutionEnvironment":99,"./ReactInputSelection":140,"./SyntheticCompositionEvent":171,"./getTextContentAccessor":206,"./keyOf":218}],87:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -18090,7 +17970,7 @@ var DOMChildrenOperations = {
 module.exports = DOMChildrenOperations;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./Danger":88,"./ReactMultiChildUpdateTypes":144,"./getTextContentAccessor":204,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],86:[function(require,module,exports){
+},{"./Danger":90,"./ReactMultiChildUpdateTypes":146,"./getTextContentAccessor":206,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],88:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -18392,7 +18272,7 @@ var DOMProperty = {
 module.exports = DOMProperty;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],87:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],89:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -18589,7 +18469,7 @@ var DOMPropertyOperations = {
 module.exports = DOMPropertyOperations;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./DOMProperty":86,"./escapeTextForBrowser":193,"./memoizeStringOnly":218,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],88:[function(require,module,exports){
+},{"./DOMProperty":88,"./escapeTextForBrowser":195,"./memoizeStringOnly":220,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],90:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -18780,7 +18660,7 @@ var Danger = {
 module.exports = Danger;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ExecutionEnvironment":97,"./createNodesFromMarkup":188,"./emptyFunction":191,"./getMarkupWrap":201,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],89:[function(require,module,exports){
+},{"./ExecutionEnvironment":99,"./createNodesFromMarkup":190,"./emptyFunction":193,"./getMarkupWrap":203,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],91:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -18827,7 +18707,7 @@ var DefaultEventPluginOrder = [
 
 module.exports = DefaultEventPluginOrder;
 
-},{"./keyOf":216}],90:[function(require,module,exports){
+},{"./keyOf":218}],92:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -18974,7 +18854,7 @@ var EnterLeaveEventPlugin = {
 
 module.exports = EnterLeaveEventPlugin;
 
-},{"./EventConstants":91,"./EventPropagators":96,"./ReactMount":142,"./SyntheticMouseEvent":175,"./keyOf":216}],91:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPropagators":98,"./ReactMount":144,"./SyntheticMouseEvent":177,"./keyOf":218}],93:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -19053,7 +18933,7 @@ var EventConstants = {
 
 module.exports = EventConstants;
 
-},{"./keyMirror":215}],92:[function(require,module,exports){
+},{"./keyMirror":217}],94:[function(require,module,exports){
 (function (process){
 /**
  * @providesModule EventListener
@@ -19129,7 +19009,7 @@ var EventListener = {
 module.exports = EventListener;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./emptyFunction":191,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],93:[function(require,module,exports){
+},{"./emptyFunction":193,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],95:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -19423,7 +19303,7 @@ var EventPluginHub = {
 module.exports = EventPluginHub;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./EventPluginRegistry":94,"./EventPluginUtils":95,"./accumulate":181,"./forEachAccumulated":196,"./invariant":209,"./isEventSupported":210,"./monitorCodeUse":223,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],94:[function(require,module,exports){
+},{"./EventPluginRegistry":96,"./EventPluginUtils":97,"./accumulate":183,"./forEachAccumulated":198,"./invariant":211,"./isEventSupported":212,"./monitorCodeUse":225,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],96:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -19710,7 +19590,7 @@ var EventPluginRegistry = {
 module.exports = EventPluginRegistry;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],95:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],97:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -19938,7 +19818,7 @@ var EventPluginUtils = {
 module.exports = EventPluginUtils;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./EventConstants":91,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],96:[function(require,module,exports){
+},{"./EventConstants":93,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],98:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -20085,7 +19965,7 @@ var EventPropagators = {
 module.exports = EventPropagators;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./EventConstants":91,"./EventPluginHub":93,"./accumulate":181,"./forEachAccumulated":196,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],97:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPluginHub":95,"./accumulate":183,"./forEachAccumulated":198,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],99:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -20137,7 +20017,7 @@ var ExecutionEnvironment = {
 
 module.exports = ExecutionEnvironment;
 
-},{}],98:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -20325,7 +20205,7 @@ var HTMLDOMPropertyConfig = {
 
 module.exports = HTMLDOMPropertyConfig;
 
-},{"./DOMProperty":86,"./ExecutionEnvironment":97}],99:[function(require,module,exports){
+},{"./DOMProperty":88,"./ExecutionEnvironment":99}],101:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -20373,7 +20253,7 @@ var LinkedStateMixin = {
 
 module.exports = LinkedStateMixin;
 
-},{"./ReactLink":140,"./ReactStateSetters":156}],100:[function(require,module,exports){
+},{"./ReactLink":142,"./ReactStateSetters":158}],102:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -20536,7 +20416,7 @@ var LinkedValueUtils = {
 module.exports = LinkedValueUtils;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactPropTypes":150,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],101:[function(require,module,exports){
+},{"./ReactPropTypes":152,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],103:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014 Facebook, Inc.
@@ -20592,7 +20472,7 @@ var LocalEventTrapMixin = {
 module.exports = LocalEventTrapMixin;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactBrowserEventEmitter":106,"./accumulate":181,"./forEachAccumulated":196,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],102:[function(require,module,exports){
+},{"./ReactBrowserEventEmitter":108,"./accumulate":183,"./forEachAccumulated":198,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],104:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -20657,7 +20537,7 @@ var MobileSafariClickEventPlugin = {
 
 module.exports = MobileSafariClickEventPlugin;
 
-},{"./EventConstants":91,"./emptyFunction":191}],103:[function(require,module,exports){
+},{"./EventConstants":93,"./emptyFunction":193}],105:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -20780,7 +20660,7 @@ var PooledClass = {
 module.exports = PooledClass;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],104:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],106:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -20915,7 +20795,7 @@ React.version = '0.11.1';
 module.exports = React;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./DOMPropertyOperations":87,"./EventPluginUtils":95,"./ExecutionEnvironment":97,"./ReactChildren":109,"./ReactComponent":110,"./ReactCompositeComponent":113,"./ReactContext":114,"./ReactCurrentOwner":115,"./ReactDOM":116,"./ReactDOMComponent":118,"./ReactDefaultInjection":128,"./ReactDescriptor":131,"./ReactInstanceHandles":139,"./ReactMount":142,"./ReactMultiChild":143,"./ReactPerf":146,"./ReactPropTypes":150,"./ReactServerRendering":154,"./ReactTextComponent":158,"./onlyChild":224,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],105:[function(require,module,exports){
+},{"./DOMPropertyOperations":89,"./EventPluginUtils":97,"./ExecutionEnvironment":99,"./ReactChildren":111,"./ReactComponent":112,"./ReactCompositeComponent":115,"./ReactContext":116,"./ReactCurrentOwner":117,"./ReactDOM":118,"./ReactDOMComponent":120,"./ReactDefaultInjection":130,"./ReactDescriptor":133,"./ReactInstanceHandles":141,"./ReactMount":144,"./ReactMultiChild":145,"./ReactPerf":148,"./ReactPropTypes":152,"./ReactServerRendering":156,"./ReactTextComponent":160,"./onlyChild":226,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],107:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -20965,7 +20845,7 @@ var ReactBrowserComponentMixin = {
 module.exports = ReactBrowserComponentMixin;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactEmptyComponent":133,"./ReactMount":142,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],106:[function(require,module,exports){
+},{"./ReactEmptyComponent":135,"./ReactMount":144,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],108:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -21327,7 +21207,7 @@ var ReactBrowserEventEmitter = merge(ReactEventEmitterMixin, {
 
 module.exports = ReactBrowserEventEmitter;
 
-},{"./EventConstants":91,"./EventPluginHub":93,"./EventPluginRegistry":94,"./ReactEventEmitterMixin":135,"./ViewportMetrics":180,"./isEventSupported":210,"./merge":219}],107:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPluginHub":95,"./EventPluginRegistry":96,"./ReactEventEmitterMixin":137,"./ViewportMetrics":182,"./isEventSupported":212,"./merge":221}],109:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -21396,7 +21276,7 @@ var ReactCSSTransitionGroup = React.createClass({
 
 module.exports = ReactCSSTransitionGroup;
 
-},{"./React":104,"./ReactCSSTransitionGroupChild":108,"./ReactTransitionGroup":161}],108:[function(require,module,exports){
+},{"./React":106,"./ReactCSSTransitionGroupChild":110,"./ReactTransitionGroup":163}],110:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -21535,7 +21415,7 @@ var ReactCSSTransitionGroupChild = React.createClass({
 module.exports = ReactCSSTransitionGroupChild;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./CSSCore":78,"./React":104,"./ReactTransitionEvents":160,"./onlyChild":224,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],109:[function(require,module,exports){
+},{"./CSSCore":80,"./React":106,"./ReactTransitionEvents":162,"./onlyChild":226,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],111:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -21692,7 +21572,7 @@ var ReactChildren = {
 module.exports = ReactChildren;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./PooledClass":103,"./traverseAllChildren":231,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],110:[function(require,module,exports){
+},{"./PooledClass":105,"./traverseAllChildren":233,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],112:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -22142,7 +22022,7 @@ var ReactComponent = {
 module.exports = ReactComponent;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactDescriptor":131,"./ReactOwner":145,"./ReactUpdates":162,"./invariant":209,"./keyMirror":215,"./merge":219,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],111:[function(require,module,exports){
+},{"./ReactDescriptor":133,"./ReactOwner":147,"./ReactUpdates":164,"./invariant":211,"./keyMirror":217,"./merge":221,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],113:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -22271,7 +22151,7 @@ var ReactComponentBrowserEnvironment = {
 module.exports = ReactComponentBrowserEnvironment;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactDOMIDOperations":120,"./ReactMarkupChecksum":141,"./ReactMount":142,"./ReactPerf":146,"./ReactReconcileTransaction":152,"./getReactRootElementInContainer":203,"./invariant":209,"./setInnerHTML":227,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],112:[function(require,module,exports){
+},{"./ReactDOMIDOperations":122,"./ReactMarkupChecksum":143,"./ReactMount":144,"./ReactPerf":148,"./ReactReconcileTransaction":154,"./getReactRootElementInContainer":205,"./invariant":211,"./setInnerHTML":229,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],114:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -22327,7 +22207,7 @@ var ReactComponentWithPureRenderMixin = {
 
 module.exports = ReactComponentWithPureRenderMixin;
 
-},{"./shallowEqual":228}],113:[function(require,module,exports){
+},{"./shallowEqual":230}],115:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -23756,7 +23636,7 @@ var ReactCompositeComponent = {
 module.exports = ReactCompositeComponent;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactComponent":110,"./ReactContext":114,"./ReactCurrentOwner":115,"./ReactDescriptor":131,"./ReactDescriptorValidator":132,"./ReactEmptyComponent":133,"./ReactErrorUtils":134,"./ReactOwner":145,"./ReactPerf":146,"./ReactPropTransferer":147,"./ReactPropTypeLocationNames":148,"./ReactPropTypeLocations":149,"./ReactUpdates":162,"./instantiateReactComponent":208,"./invariant":209,"./keyMirror":215,"./mapObject":217,"./merge":219,"./mixInto":222,"./monitorCodeUse":223,"./shouldUpdateReactComponent":229,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],114:[function(require,module,exports){
+},{"./ReactComponent":112,"./ReactContext":116,"./ReactCurrentOwner":117,"./ReactDescriptor":133,"./ReactDescriptorValidator":134,"./ReactEmptyComponent":135,"./ReactErrorUtils":136,"./ReactOwner":147,"./ReactPerf":148,"./ReactPropTransferer":149,"./ReactPropTypeLocationNames":150,"./ReactPropTypeLocations":151,"./ReactUpdates":164,"./instantiateReactComponent":210,"./invariant":211,"./keyMirror":217,"./mapObject":219,"./merge":221,"./mixInto":224,"./monitorCodeUse":225,"./shouldUpdateReactComponent":231,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],116:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -23825,7 +23705,7 @@ var ReactContext = {
 
 module.exports = ReactContext;
 
-},{"./merge":219}],115:[function(require,module,exports){
+},{"./merge":221}],117:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -23866,7 +23746,7 @@ var ReactCurrentOwner = {
 
 module.exports = ReactCurrentOwner;
 
-},{}],116:[function(require,module,exports){
+},{}],118:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -24079,7 +23959,7 @@ ReactDOM.injection = injection;
 module.exports = ReactDOM;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactDOMComponent":118,"./ReactDescriptor":131,"./ReactDescriptorValidator":132,"./mapObject":217,"./mergeInto":221,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],117:[function(require,module,exports){
+},{"./ReactDOMComponent":120,"./ReactDescriptor":133,"./ReactDescriptorValidator":134,"./mapObject":219,"./mergeInto":223,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],119:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -24150,7 +24030,7 @@ var ReactDOMButton = ReactCompositeComponent.createClass({
 
 module.exports = ReactDOMButton;
 
-},{"./AutoFocusMixin":76,"./ReactBrowserComponentMixin":105,"./ReactCompositeComponent":113,"./ReactDOM":116,"./keyMirror":215}],118:[function(require,module,exports){
+},{"./AutoFocusMixin":78,"./ReactBrowserComponentMixin":107,"./ReactCompositeComponent":115,"./ReactDOM":118,"./keyMirror":217}],120:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -24572,7 +24452,7 @@ mixInto(ReactDOMComponent, ReactBrowserComponentMixin);
 module.exports = ReactDOMComponent;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./CSSPropertyOperations":80,"./DOMProperty":86,"./DOMPropertyOperations":87,"./ReactBrowserComponentMixin":105,"./ReactBrowserEventEmitter":106,"./ReactComponent":110,"./ReactMount":142,"./ReactMultiChild":143,"./ReactPerf":146,"./escapeTextForBrowser":193,"./invariant":209,"./keyOf":216,"./merge":219,"./mixInto":222,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],119:[function(require,module,exports){
+},{"./CSSPropertyOperations":82,"./DOMProperty":88,"./DOMPropertyOperations":89,"./ReactBrowserComponentMixin":107,"./ReactBrowserEventEmitter":108,"./ReactComponent":112,"./ReactMount":144,"./ReactMultiChild":145,"./ReactPerf":148,"./escapeTextForBrowser":195,"./invariant":211,"./keyOf":218,"./merge":221,"./mixInto":224,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],121:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -24628,7 +24508,7 @@ var ReactDOMForm = ReactCompositeComponent.createClass({
 
 module.exports = ReactDOMForm;
 
-},{"./EventConstants":91,"./LocalEventTrapMixin":101,"./ReactBrowserComponentMixin":105,"./ReactCompositeComponent":113,"./ReactDOM":116}],120:[function(require,module,exports){
+},{"./EventConstants":93,"./LocalEventTrapMixin":103,"./ReactBrowserComponentMixin":107,"./ReactCompositeComponent":115,"./ReactDOM":118}],122:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -24821,7 +24701,7 @@ var ReactDOMIDOperations = {
 module.exports = ReactDOMIDOperations;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./CSSPropertyOperations":80,"./DOMChildrenOperations":85,"./DOMPropertyOperations":87,"./ReactMount":142,"./ReactPerf":146,"./invariant":209,"./setInnerHTML":227,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],121:[function(require,module,exports){
+},{"./CSSPropertyOperations":82,"./DOMChildrenOperations":87,"./DOMPropertyOperations":89,"./ReactMount":144,"./ReactPerf":148,"./invariant":211,"./setInnerHTML":229,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],123:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -24875,7 +24755,7 @@ var ReactDOMImg = ReactCompositeComponent.createClass({
 
 module.exports = ReactDOMImg;
 
-},{"./EventConstants":91,"./LocalEventTrapMixin":101,"./ReactBrowserComponentMixin":105,"./ReactCompositeComponent":113,"./ReactDOM":116}],122:[function(require,module,exports){
+},{"./EventConstants":93,"./LocalEventTrapMixin":103,"./ReactBrowserComponentMixin":107,"./ReactCompositeComponent":115,"./ReactDOM":118}],124:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -25061,7 +24941,7 @@ var ReactDOMInput = ReactCompositeComponent.createClass({
 module.exports = ReactDOMInput;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./AutoFocusMixin":76,"./DOMPropertyOperations":87,"./LinkedValueUtils":100,"./ReactBrowserComponentMixin":105,"./ReactCompositeComponent":113,"./ReactDOM":116,"./ReactMount":142,"./invariant":209,"./merge":219,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],123:[function(require,module,exports){
+},{"./AutoFocusMixin":78,"./DOMPropertyOperations":89,"./LinkedValueUtils":102,"./ReactBrowserComponentMixin":107,"./ReactCompositeComponent":115,"./ReactDOM":118,"./ReactMount":144,"./invariant":211,"./merge":221,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],125:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -25120,7 +25000,7 @@ var ReactDOMOption = ReactCompositeComponent.createClass({
 module.exports = ReactDOMOption;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactBrowserComponentMixin":105,"./ReactCompositeComponent":113,"./ReactDOM":116,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],124:[function(require,module,exports){
+},{"./ReactBrowserComponentMixin":107,"./ReactCompositeComponent":115,"./ReactDOM":118,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],126:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -25303,7 +25183,7 @@ var ReactDOMSelect = ReactCompositeComponent.createClass({
 
 module.exports = ReactDOMSelect;
 
-},{"./AutoFocusMixin":76,"./LinkedValueUtils":100,"./ReactBrowserComponentMixin":105,"./ReactCompositeComponent":113,"./ReactDOM":116,"./merge":219}],125:[function(require,module,exports){
+},{"./AutoFocusMixin":78,"./LinkedValueUtils":102,"./ReactBrowserComponentMixin":107,"./ReactCompositeComponent":115,"./ReactDOM":118,"./merge":221}],127:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -25519,7 +25399,7 @@ var ReactDOMSelection = {
 
 module.exports = ReactDOMSelection;
 
-},{"./ExecutionEnvironment":97,"./getNodeForCharacterOffset":202,"./getTextContentAccessor":204}],126:[function(require,module,exports){
+},{"./ExecutionEnvironment":99,"./getNodeForCharacterOffset":204,"./getTextContentAccessor":206}],128:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -25665,7 +25545,7 @@ var ReactDOMTextarea = ReactCompositeComponent.createClass({
 module.exports = ReactDOMTextarea;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./AutoFocusMixin":76,"./DOMPropertyOperations":87,"./LinkedValueUtils":100,"./ReactBrowserComponentMixin":105,"./ReactCompositeComponent":113,"./ReactDOM":116,"./invariant":209,"./merge":219,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],127:[function(require,module,exports){
+},{"./AutoFocusMixin":78,"./DOMPropertyOperations":89,"./LinkedValueUtils":102,"./ReactBrowserComponentMixin":107,"./ReactCompositeComponent":115,"./ReactDOM":118,"./invariant":211,"./merge":221,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],129:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -25742,7 +25622,7 @@ var ReactDefaultBatchingStrategy = {
 
 module.exports = ReactDefaultBatchingStrategy;
 
-},{"./ReactUpdates":162,"./Transaction":179,"./emptyFunction":191,"./mixInto":222}],128:[function(require,module,exports){
+},{"./ReactUpdates":164,"./Transaction":181,"./emptyFunction":193,"./mixInto":224}],130:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -25874,7 +25754,7 @@ module.exports = {
 };
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./BeforeInputEventPlugin":77,"./ChangeEventPlugin":82,"./ClientReactRootIndex":83,"./CompositionEventPlugin":84,"./DefaultEventPluginOrder":89,"./EnterLeaveEventPlugin":90,"./ExecutionEnvironment":97,"./HTMLDOMPropertyConfig":98,"./MobileSafariClickEventPlugin":102,"./ReactBrowserComponentMixin":105,"./ReactComponentBrowserEnvironment":111,"./ReactDOM":116,"./ReactDOMButton":117,"./ReactDOMForm":119,"./ReactDOMImg":121,"./ReactDOMInput":122,"./ReactDOMOption":123,"./ReactDOMSelect":124,"./ReactDOMTextarea":126,"./ReactDefaultBatchingStrategy":127,"./ReactDefaultPerf":129,"./ReactEventListener":136,"./ReactInjection":137,"./ReactInstanceHandles":139,"./ReactMount":142,"./SVGDOMPropertyConfig":164,"./SelectEventPlugin":165,"./ServerReactRootIndex":166,"./SimpleEventPlugin":167,"./createFullPageComponent":187,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],129:[function(require,module,exports){
+},{"./BeforeInputEventPlugin":79,"./ChangeEventPlugin":84,"./ClientReactRootIndex":85,"./CompositionEventPlugin":86,"./DefaultEventPluginOrder":91,"./EnterLeaveEventPlugin":92,"./ExecutionEnvironment":99,"./HTMLDOMPropertyConfig":100,"./MobileSafariClickEventPlugin":104,"./ReactBrowserComponentMixin":107,"./ReactComponentBrowserEnvironment":113,"./ReactDOM":118,"./ReactDOMButton":119,"./ReactDOMForm":121,"./ReactDOMImg":123,"./ReactDOMInput":124,"./ReactDOMOption":125,"./ReactDOMSelect":126,"./ReactDOMTextarea":128,"./ReactDefaultBatchingStrategy":129,"./ReactDefaultPerf":131,"./ReactEventListener":138,"./ReactInjection":139,"./ReactInstanceHandles":141,"./ReactMount":144,"./SVGDOMPropertyConfig":166,"./SelectEventPlugin":167,"./ServerReactRootIndex":168,"./SimpleEventPlugin":169,"./createFullPageComponent":189,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],131:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -26137,7 +26017,7 @@ var ReactDefaultPerf = {
 
 module.exports = ReactDefaultPerf;
 
-},{"./DOMProperty":86,"./ReactDefaultPerfAnalysis":130,"./ReactMount":142,"./ReactPerf":146,"./performanceNow":226}],130:[function(require,module,exports){
+},{"./DOMProperty":88,"./ReactDefaultPerfAnalysis":132,"./ReactMount":144,"./ReactPerf":148,"./performanceNow":228}],132:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -26342,7 +26222,7 @@ var ReactDefaultPerfAnalysis = {
 
 module.exports = ReactDefaultPerfAnalysis;
 
-},{"./merge":219}],131:[function(require,module,exports){
+},{"./merge":221}],133:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014 Facebook, Inc.
@@ -26597,7 +26477,7 @@ ReactDescriptor.isValidDescriptor = function(object) {
 module.exports = ReactDescriptor;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactContext":114,"./ReactCurrentOwner":115,"./merge":219,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],132:[function(require,module,exports){
+},{"./ReactContext":116,"./ReactCurrentOwner":117,"./merge":221,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],134:[function(require,module,exports){
 /**
  * Copyright 2014 Facebook, Inc.
  *
@@ -26882,7 +26762,7 @@ var ReactDescriptorValidator = {
 
 module.exports = ReactDescriptorValidator;
 
-},{"./ReactCurrentOwner":115,"./ReactDescriptor":131,"./ReactPropTypeLocations":149,"./monitorCodeUse":223}],133:[function(require,module,exports){
+},{"./ReactCurrentOwner":117,"./ReactDescriptor":133,"./ReactPropTypeLocations":151,"./monitorCodeUse":225}],135:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014 Facebook, Inc.
@@ -26964,7 +26844,7 @@ var ReactEmptyComponent = {
 module.exports = ReactEmptyComponent;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],134:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],136:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -27003,7 +26883,7 @@ var ReactErrorUtils = {
 
 module.exports = ReactErrorUtils;
 
-},{}],135:[function(require,module,exports){
+},{}],137:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -27060,7 +26940,7 @@ var ReactEventEmitterMixin = {
 
 module.exports = ReactEventEmitterMixin;
 
-},{"./EventPluginHub":93}],136:[function(require,module,exports){
+},{"./EventPluginHub":95}],138:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -27251,7 +27131,7 @@ var ReactEventListener = {
 
 module.exports = ReactEventListener;
 
-},{"./EventListener":92,"./ExecutionEnvironment":97,"./PooledClass":103,"./ReactInstanceHandles":139,"./ReactMount":142,"./ReactUpdates":162,"./getEventTarget":200,"./getUnboundedScrollPosition":205,"./mixInto":222}],137:[function(require,module,exports){
+},{"./EventListener":94,"./ExecutionEnvironment":99,"./PooledClass":105,"./ReactInstanceHandles":141,"./ReactMount":144,"./ReactUpdates":164,"./getEventTarget":202,"./getUnboundedScrollPosition":207,"./mixInto":224}],139:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -27298,7 +27178,7 @@ var ReactInjection = {
 
 module.exports = ReactInjection;
 
-},{"./DOMProperty":86,"./EventPluginHub":93,"./ReactBrowserEventEmitter":106,"./ReactComponent":110,"./ReactCompositeComponent":113,"./ReactDOM":116,"./ReactEmptyComponent":133,"./ReactPerf":146,"./ReactRootIndex":153,"./ReactUpdates":162}],138:[function(require,module,exports){
+},{"./DOMProperty":88,"./EventPluginHub":95,"./ReactBrowserEventEmitter":108,"./ReactComponent":112,"./ReactCompositeComponent":115,"./ReactDOM":118,"./ReactEmptyComponent":135,"./ReactPerf":148,"./ReactRootIndex":155,"./ReactUpdates":164}],140:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -27441,7 +27321,7 @@ var ReactInputSelection = {
 
 module.exports = ReactInputSelection;
 
-},{"./ReactDOMSelection":125,"./containsNode":184,"./focusNode":195,"./getActiveElement":197}],139:[function(require,module,exports){
+},{"./ReactDOMSelection":127,"./containsNode":186,"./focusNode":197,"./getActiveElement":199}],141:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -27783,7 +27663,7 @@ var ReactInstanceHandles = {
 module.exports = ReactInstanceHandles;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactRootIndex":153,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],140:[function(require,module,exports){
+},{"./ReactRootIndex":155,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],142:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -27863,7 +27743,7 @@ ReactLink.PropTypes = {
 
 module.exports = ReactLink;
 
-},{"./React":104}],141:[function(require,module,exports){
+},{"./React":106}],143:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -27918,7 +27798,7 @@ var ReactMarkupChecksum = {
 
 module.exports = ReactMarkupChecksum;
 
-},{"./adler32":182}],142:[function(require,module,exports){
+},{"./adler32":184}],144:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -28603,7 +28483,7 @@ var ReactMount = {
 module.exports = ReactMount;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./DOMProperty":86,"./ReactBrowserEventEmitter":106,"./ReactCurrentOwner":115,"./ReactDescriptor":131,"./ReactInstanceHandles":139,"./ReactPerf":146,"./containsNode":184,"./getReactRootElementInContainer":203,"./instantiateReactComponent":208,"./invariant":209,"./shouldUpdateReactComponent":229,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],143:[function(require,module,exports){
+},{"./DOMProperty":88,"./ReactBrowserEventEmitter":108,"./ReactCurrentOwner":117,"./ReactDescriptor":133,"./ReactInstanceHandles":141,"./ReactPerf":148,"./containsNode":186,"./getReactRootElementInContainer":205,"./instantiateReactComponent":210,"./invariant":211,"./shouldUpdateReactComponent":231,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],145:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -29035,7 +28915,7 @@ var ReactMultiChild = {
 
 module.exports = ReactMultiChild;
 
-},{"./ReactComponent":110,"./ReactMultiChildUpdateTypes":144,"./flattenChildren":194,"./instantiateReactComponent":208,"./shouldUpdateReactComponent":229}],144:[function(require,module,exports){
+},{"./ReactComponent":112,"./ReactMultiChildUpdateTypes":146,"./flattenChildren":196,"./instantiateReactComponent":210,"./shouldUpdateReactComponent":231}],146:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -29075,7 +28955,7 @@ var ReactMultiChildUpdateTypes = keyMirror({
 
 module.exports = ReactMultiChildUpdateTypes;
 
-},{"./keyMirror":215}],145:[function(require,module,exports){
+},{"./keyMirror":217}],147:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -29238,7 +29118,7 @@ var ReactOwner = {
 module.exports = ReactOwner;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./emptyObject":192,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],146:[function(require,module,exports){
+},{"./emptyObject":194,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],148:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -29327,7 +29207,7 @@ function _noMeasure(objName, fnName, func) {
 module.exports = ReactPerf;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],147:[function(require,module,exports){
+},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],149:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -29493,7 +29373,7 @@ var ReactPropTransferer = {
 module.exports = ReactPropTransferer;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./emptyFunction":191,"./invariant":209,"./joinClasses":214,"./merge":219,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],148:[function(require,module,exports){
+},{"./emptyFunction":193,"./invariant":211,"./joinClasses":216,"./merge":221,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],150:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -29528,7 +29408,7 @@ if ("production" !== process.env.NODE_ENV) {
 module.exports = ReactPropTypeLocationNames;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],149:[function(require,module,exports){
+},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],151:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -29559,7 +29439,7 @@ var ReactPropTypeLocations = keyMirror({
 
 module.exports = ReactPropTypeLocations;
 
-},{"./keyMirror":215}],150:[function(require,module,exports){
+},{"./keyMirror":217}],152:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -29904,7 +29784,7 @@ function getPreciseType(propValue) {
 
 module.exports = ReactPropTypes;
 
-},{"./ReactDescriptor":131,"./ReactPropTypeLocationNames":148,"./emptyFunction":191}],151:[function(require,module,exports){
+},{"./ReactDescriptor":133,"./ReactPropTypeLocationNames":150,"./emptyFunction":193}],153:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -29967,7 +29847,7 @@ PooledClass.addPoolingTo(ReactPutListenerQueue);
 
 module.exports = ReactPutListenerQueue;
 
-},{"./PooledClass":103,"./ReactBrowserEventEmitter":106,"./mixInto":222}],152:[function(require,module,exports){
+},{"./PooledClass":105,"./ReactBrowserEventEmitter":108,"./mixInto":224}],154:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -30151,7 +30031,7 @@ PooledClass.addPoolingTo(ReactReconcileTransaction);
 
 module.exports = ReactReconcileTransaction;
 
-},{"./CallbackQueue":81,"./PooledClass":103,"./ReactBrowserEventEmitter":106,"./ReactInputSelection":138,"./ReactPutListenerQueue":151,"./Transaction":179,"./mixInto":222}],153:[function(require,module,exports){
+},{"./CallbackQueue":83,"./PooledClass":105,"./ReactBrowserEventEmitter":108,"./ReactInputSelection":140,"./ReactPutListenerQueue":153,"./Transaction":181,"./mixInto":224}],155:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -30189,7 +30069,7 @@ var ReactRootIndex = {
 
 module.exports = ReactRootIndex;
 
-},{}],154:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -30282,7 +30162,7 @@ module.exports = {
 };
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactDescriptor":131,"./ReactInstanceHandles":139,"./ReactMarkupChecksum":141,"./ReactServerRenderingTransaction":155,"./instantiateReactComponent":208,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],155:[function(require,module,exports){
+},{"./ReactDescriptor":133,"./ReactInstanceHandles":141,"./ReactMarkupChecksum":143,"./ReactServerRenderingTransaction":157,"./instantiateReactComponent":210,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],157:[function(require,module,exports){
 /**
  * Copyright 2014 Facebook, Inc.
  *
@@ -30399,7 +30279,7 @@ PooledClass.addPoolingTo(ReactServerRenderingTransaction);
 
 module.exports = ReactServerRenderingTransaction;
 
-},{"./CallbackQueue":81,"./PooledClass":103,"./ReactPutListenerQueue":151,"./Transaction":179,"./emptyFunction":191,"./mixInto":222}],156:[function(require,module,exports){
+},{"./CallbackQueue":83,"./PooledClass":105,"./ReactPutListenerQueue":153,"./Transaction":181,"./emptyFunction":193,"./mixInto":224}],158:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -30512,7 +30392,7 @@ ReactStateSetters.Mixin = {
 
 module.exports = ReactStateSetters;
 
-},{}],157:[function(require,module,exports){
+},{}],159:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -30926,7 +30806,7 @@ for (eventType in topLevelTypes) {
 
 module.exports = ReactTestUtils;
 
-},{"./EventConstants":91,"./EventPluginHub":93,"./EventPropagators":96,"./React":104,"./ReactBrowserEventEmitter":106,"./ReactDOM":116,"./ReactDescriptor":131,"./ReactMount":142,"./ReactTextComponent":158,"./ReactUpdates":162,"./SyntheticEvent":171,"./copyProperties":185,"./mergeInto":221}],158:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPluginHub":95,"./EventPropagators":98,"./React":106,"./ReactBrowserEventEmitter":108,"./ReactDOM":118,"./ReactDescriptor":133,"./ReactMount":144,"./ReactTextComponent":160,"./ReactUpdates":164,"./SyntheticEvent":173,"./copyProperties":187,"./mergeInto":223}],160:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -31035,7 +30915,7 @@ mixInto(ReactTextComponent, {
 
 module.exports = ReactDescriptor.createFactory(ReactTextComponent);
 
-},{"./DOMPropertyOperations":87,"./ReactBrowserComponentMixin":105,"./ReactComponent":110,"./ReactDescriptor":131,"./escapeTextForBrowser":193,"./mixInto":222}],159:[function(require,module,exports){
+},{"./DOMPropertyOperations":89,"./ReactBrowserComponentMixin":107,"./ReactComponent":112,"./ReactDescriptor":133,"./escapeTextForBrowser":195,"./mixInto":224}],161:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -31143,7 +31023,7 @@ var ReactTransitionChildMapping = {
 
 module.exports = ReactTransitionChildMapping;
 
-},{"./ReactChildren":109}],160:[function(require,module,exports){
+},{"./ReactChildren":111}],162:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -31261,7 +31141,7 @@ var ReactTransitionEvents = {
 
 module.exports = ReactTransitionEvents;
 
-},{"./ExecutionEnvironment":97}],161:[function(require,module,exports){
+},{"./ExecutionEnvironment":99}],163:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -31453,7 +31333,7 @@ var ReactTransitionGroup = React.createClass({
 
 module.exports = ReactTransitionGroup;
 
-},{"./React":104,"./ReactTransitionChildMapping":159,"./cloneWithProps":183,"./emptyFunction":191,"./merge":219}],162:[function(require,module,exports){
+},{"./React":106,"./ReactTransitionChildMapping":161,"./cloneWithProps":185,"./emptyFunction":193,"./merge":221}],164:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -31722,7 +31602,7 @@ var ReactUpdates = {
 module.exports = ReactUpdates;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./CallbackQueue":81,"./PooledClass":103,"./ReactCurrentOwner":115,"./ReactPerf":146,"./Transaction":179,"./invariant":209,"./mixInto":222,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],163:[function(require,module,exports){
+},{"./CallbackQueue":83,"./PooledClass":105,"./ReactCurrentOwner":117,"./ReactPerf":148,"./Transaction":181,"./invariant":211,"./mixInto":224,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],165:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -31782,7 +31662,7 @@ module.exports = React;
 
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./LinkedStateMixin":99,"./React":104,"./ReactCSSTransitionGroup":107,"./ReactComponentWithPureRenderMixin":112,"./ReactDefaultPerf":129,"./ReactTestUtils":157,"./ReactTransitionGroup":161,"./cloneWithProps":183,"./cx":189,"./update":232,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],164:[function(require,module,exports){
+},{"./LinkedStateMixin":101,"./React":106,"./ReactCSSTransitionGroup":109,"./ReactComponentWithPureRenderMixin":114,"./ReactDefaultPerf":131,"./ReactTestUtils":159,"./ReactTransitionGroup":163,"./cloneWithProps":185,"./cx":191,"./update":234,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],166:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -31881,7 +31761,7 @@ var SVGDOMPropertyConfig = {
 
 module.exports = SVGDOMPropertyConfig;
 
-},{"./DOMProperty":86}],165:[function(require,module,exports){
+},{"./DOMProperty":88}],167:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -32083,7 +31963,7 @@ var SelectEventPlugin = {
 
 module.exports = SelectEventPlugin;
 
-},{"./EventConstants":91,"./EventPropagators":96,"./ReactInputSelection":138,"./SyntheticEvent":171,"./getActiveElement":197,"./isTextInputElement":212,"./keyOf":216,"./shallowEqual":228}],166:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPropagators":98,"./ReactInputSelection":140,"./SyntheticEvent":173,"./getActiveElement":199,"./isTextInputElement":214,"./keyOf":218,"./shallowEqual":230}],168:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -32121,7 +32001,7 @@ var ServerReactRootIndex = {
 
 module.exports = ServerReactRootIndex;
 
-},{}],167:[function(require,module,exports){
+},{}],169:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -32544,7 +32424,7 @@ var SimpleEventPlugin = {
 module.exports = SimpleEventPlugin;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./EventConstants":91,"./EventPluginUtils":95,"./EventPropagators":96,"./SyntheticClipboardEvent":168,"./SyntheticDragEvent":170,"./SyntheticEvent":171,"./SyntheticFocusEvent":172,"./SyntheticKeyboardEvent":174,"./SyntheticMouseEvent":175,"./SyntheticTouchEvent":176,"./SyntheticUIEvent":177,"./SyntheticWheelEvent":178,"./invariant":209,"./keyOf":216,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],168:[function(require,module,exports){
+},{"./EventConstants":93,"./EventPluginUtils":97,"./EventPropagators":98,"./SyntheticClipboardEvent":170,"./SyntheticDragEvent":172,"./SyntheticEvent":173,"./SyntheticFocusEvent":174,"./SyntheticKeyboardEvent":176,"./SyntheticMouseEvent":177,"./SyntheticTouchEvent":178,"./SyntheticUIEvent":179,"./SyntheticWheelEvent":180,"./invariant":211,"./keyOf":218,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],170:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -32597,7 +32477,7 @@ SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 module.exports = SyntheticClipboardEvent;
 
 
-},{"./SyntheticEvent":171}],169:[function(require,module,exports){
+},{"./SyntheticEvent":173}],171:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -32650,7 +32530,7 @@ SyntheticEvent.augmentClass(
 module.exports = SyntheticCompositionEvent;
 
 
-},{"./SyntheticEvent":171}],170:[function(require,module,exports){
+},{"./SyntheticEvent":173}],172:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -32696,7 +32576,7 @@ SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 
 module.exports = SyntheticDragEvent;
 
-},{"./SyntheticMouseEvent":175}],171:[function(require,module,exports){
+},{"./SyntheticMouseEvent":177}],173:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -32862,7 +32742,7 @@ PooledClass.addPoolingTo(SyntheticEvent, PooledClass.threeArgumentPooler);
 
 module.exports = SyntheticEvent;
 
-},{"./PooledClass":103,"./emptyFunction":191,"./getEventTarget":200,"./merge":219,"./mergeInto":221}],172:[function(require,module,exports){
+},{"./PooledClass":105,"./emptyFunction":193,"./getEventTarget":202,"./merge":221,"./mergeInto":223}],174:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -32908,7 +32788,7 @@ SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 
 module.exports = SyntheticFocusEvent;
 
-},{"./SyntheticUIEvent":177}],173:[function(require,module,exports){
+},{"./SyntheticUIEvent":179}],175:[function(require,module,exports){
 /**
  * Copyright 2013 Facebook, Inc.
  *
@@ -32962,7 +32842,7 @@ SyntheticEvent.augmentClass(
 module.exports = SyntheticInputEvent;
 
 
-},{"./SyntheticEvent":171}],174:[function(require,module,exports){
+},{"./SyntheticEvent":173}],176:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33051,7 +32931,7 @@ SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 
 module.exports = SyntheticKeyboardEvent;
 
-},{"./SyntheticUIEvent":177,"./getEventKey":198,"./getEventModifierState":199}],175:[function(require,module,exports){
+},{"./SyntheticUIEvent":179,"./getEventKey":200,"./getEventModifierState":201}],177:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33141,7 +33021,7 @@ SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 
 module.exports = SyntheticMouseEvent;
 
-},{"./SyntheticUIEvent":177,"./ViewportMetrics":180,"./getEventModifierState":199}],176:[function(require,module,exports){
+},{"./SyntheticUIEvent":179,"./ViewportMetrics":182,"./getEventModifierState":201}],178:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33196,7 +33076,7 @@ SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 
 module.exports = SyntheticTouchEvent;
 
-},{"./SyntheticUIEvent":177,"./getEventModifierState":199}],177:[function(require,module,exports){
+},{"./SyntheticUIEvent":179,"./getEventModifierState":201}],179:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33265,7 +33145,7 @@ SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 
 module.exports = SyntheticUIEvent;
 
-},{"./SyntheticEvent":171,"./getEventTarget":200}],178:[function(require,module,exports){
+},{"./SyntheticEvent":173,"./getEventTarget":202}],180:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33333,7 +33213,7 @@ SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 
 module.exports = SyntheticWheelEvent;
 
-},{"./SyntheticMouseEvent":175}],179:[function(require,module,exports){
+},{"./SyntheticMouseEvent":177}],181:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -33581,7 +33461,7 @@ var Transaction = {
 module.exports = Transaction;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],180:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],182:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33620,7 +33500,7 @@ var ViewportMetrics = {
 
 module.exports = ViewportMetrics;
 
-},{"./getUnboundedScrollPosition":205}],181:[function(require,module,exports){
+},{"./getUnboundedScrollPosition":207}],183:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -33678,7 +33558,7 @@ function accumulate(current, next) {
 module.exports = accumulate;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],182:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],184:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33719,7 +33599,7 @@ function adler32(data) {
 
 module.exports = adler32;
 
-},{}],183:[function(require,module,exports){
+},{}],185:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -33784,7 +33664,7 @@ function cloneWithProps(child, props) {
 module.exports = cloneWithProps;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactPropTransferer":147,"./keyOf":216,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],184:[function(require,module,exports){
+},{"./ReactPropTransferer":149,"./keyOf":218,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],186:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33835,7 +33715,7 @@ function containsNode(outerNode, innerNode) {
 
 module.exports = containsNode;
 
-},{"./isTextNode":213}],185:[function(require,module,exports){
+},{"./isTextNode":215}],187:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -33893,7 +33773,7 @@ function copyProperties(obj, a, b, c, d, e, f) {
 module.exports = copyProperties;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],186:[function(require,module,exports){
+},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],188:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -33986,7 +33866,7 @@ function createArrayFrom(obj) {
 
 module.exports = createArrayFrom;
 
-},{"./toArray":230}],187:[function(require,module,exports){
+},{"./toArray":232}],189:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -34053,7 +33933,7 @@ function createFullPageComponent(componentClass) {
 module.exports = createFullPageComponent;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactCompositeComponent":113,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],188:[function(require,module,exports){
+},{"./ReactCompositeComponent":115,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],190:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -34150,7 +34030,7 @@ function createNodesFromMarkup(markup, handleScript) {
 module.exports = createNodesFromMarkup;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ExecutionEnvironment":97,"./createArrayFrom":186,"./getMarkupWrap":201,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],189:[function(require,module,exports){
+},{"./ExecutionEnvironment":99,"./createArrayFrom":188,"./getMarkupWrap":203,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],191:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -34196,7 +34076,7 @@ function cx(classNames) {
 
 module.exports = cx;
 
-},{}],190:[function(require,module,exports){
+},{}],192:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -34261,7 +34141,7 @@ function dangerousStyleValue(name, value) {
 
 module.exports = dangerousStyleValue;
 
-},{"./CSSProperty":79}],191:[function(require,module,exports){
+},{"./CSSProperty":81}],193:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -34306,7 +34186,7 @@ copyProperties(emptyFunction, {
 
 module.exports = emptyFunction;
 
-},{"./copyProperties":185}],192:[function(require,module,exports){
+},{"./copyProperties":187}],194:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -34337,7 +34217,7 @@ if ("production" !== process.env.NODE_ENV) {
 module.exports = emptyObject;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],193:[function(require,module,exports){
+},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],195:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -34385,7 +34265,7 @@ function escapeTextForBrowser(text) {
 
 module.exports = escapeTextForBrowser;
 
-},{}],194:[function(require,module,exports){
+},{}],196:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -34448,7 +34328,7 @@ function flattenChildren(children) {
 module.exports = flattenChildren;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./traverseAllChildren":231,"./warning":233,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],195:[function(require,module,exports){
+},{"./traverseAllChildren":233,"./warning":235,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],197:[function(require,module,exports){
 /**
  * Copyright 2014 Facebook, Inc.
  *
@@ -34483,7 +34363,7 @@ function focusNode(node) {
 
 module.exports = focusNode;
 
-},{}],196:[function(require,module,exports){
+},{}],198:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -34521,7 +34401,7 @@ var forEachAccumulated = function(arr, cb, scope) {
 
 module.exports = forEachAccumulated;
 
-},{}],197:[function(require,module,exports){
+},{}],199:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -34557,7 +34437,7 @@ function getActiveElement() /*?DOMElement*/ {
 
 module.exports = getActiveElement;
 
-},{}],198:[function(require,module,exports){
+},{}],200:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -34676,7 +34556,7 @@ function getEventKey(nativeEvent) {
 module.exports = getEventKey;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],199:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],201:[function(require,module,exports){
 /**
  * Copyright 2013 Facebook, Inc.
  *
@@ -34730,7 +34610,7 @@ function getEventModifierState(nativeEvent) {
 
 module.exports = getEventModifierState;
 
-},{}],200:[function(require,module,exports){
+},{}],202:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -34768,7 +34648,7 @@ function getEventTarget(nativeEvent) {
 
 module.exports = getEventTarget;
 
-},{}],201:[function(require,module,exports){
+},{}],203:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -34892,7 +34772,7 @@ function getMarkupWrap(nodeName) {
 module.exports = getMarkupWrap;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ExecutionEnvironment":97,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],202:[function(require,module,exports){
+},{"./ExecutionEnvironment":99,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],204:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -34974,7 +34854,7 @@ function getNodeForCharacterOffset(root, offset) {
 
 module.exports = getNodeForCharacterOffset;
 
-},{}],203:[function(require,module,exports){
+},{}],205:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35016,7 +34896,7 @@ function getReactRootElementInContainer(container) {
 
 module.exports = getReactRootElementInContainer;
 
-},{}],204:[function(require,module,exports){
+},{}],206:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35060,7 +34940,7 @@ function getTextContentAccessor() {
 
 module.exports = getTextContentAccessor;
 
-},{"./ExecutionEnvironment":97}],205:[function(require,module,exports){
+},{"./ExecutionEnvironment":99}],207:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35107,7 +34987,7 @@ function getUnboundedScrollPosition(scrollable) {
 
 module.exports = getUnboundedScrollPosition;
 
-},{}],206:[function(require,module,exports){
+},{}],208:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35147,7 +35027,7 @@ function hyphenate(string) {
 
 module.exports = hyphenate;
 
-},{}],207:[function(require,module,exports){
+},{}],209:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35195,7 +35075,7 @@ function hyphenateStyleName(string) {
 
 module.exports = hyphenateStyleName;
 
-},{"./hyphenate":206}],208:[function(require,module,exports){
+},{"./hyphenate":208}],210:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -35261,7 +35141,7 @@ function instantiateReactComponent(descriptor) {
 module.exports = instantiateReactComponent;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],209:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],211:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -35325,7 +35205,7 @@ var invariant = function(condition, format, a, b, c, d, e, f) {
 module.exports = invariant;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],210:[function(require,module,exports){
+},{"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],212:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35397,7 +35277,7 @@ function isEventSupported(eventNameSuffix, capture) {
 
 module.exports = isEventSupported;
 
-},{"./ExecutionEnvironment":97}],211:[function(require,module,exports){
+},{"./ExecutionEnvironment":99}],213:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35432,7 +35312,7 @@ function isNode(object) {
 
 module.exports = isNode;
 
-},{}],212:[function(require,module,exports){
+},{}],214:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35483,7 +35363,7 @@ function isTextInputElement(elem) {
 
 module.exports = isTextInputElement;
 
-},{}],213:[function(require,module,exports){
+},{}],215:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35515,7 +35395,7 @@ function isTextNode(object) {
 
 module.exports = isTextNode;
 
-},{"./isNode":211}],214:[function(require,module,exports){
+},{"./isNode":213}],216:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35561,7 +35441,7 @@ function joinClasses(className/*, ... */) {
 
 module.exports = joinClasses;
 
-},{}],215:[function(require,module,exports){
+},{}],217:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -35623,7 +35503,7 @@ var keyMirror = function(obj) {
 module.exports = keyMirror;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],216:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],218:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35666,7 +35546,7 @@ var keyOf = function(oneKeyObj) {
 
 module.exports = keyOf;
 
-},{}],217:[function(require,module,exports){
+},{}],219:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35720,7 +35600,7 @@ function mapObject(obj, func, context) {
 
 module.exports = mapObject;
 
-},{}],218:[function(require,module,exports){
+},{}],220:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35761,7 +35641,7 @@ function memoizeStringOnly(callback) {
 
 module.exports = memoizeStringOnly;
 
-},{}],219:[function(require,module,exports){
+},{}],221:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35800,7 +35680,7 @@ var merge = function(one, two) {
 
 module.exports = merge;
 
-},{"./mergeInto":221}],220:[function(require,module,exports){
+},{"./mergeInto":223}],222:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -35951,7 +35831,7 @@ var mergeHelpers = {
 module.exports = mergeHelpers;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"./keyMirror":215,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],221:[function(require,module,exports){
+},{"./invariant":211,"./keyMirror":217,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],223:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -35999,7 +35879,7 @@ function mergeInto(one, two) {
 
 module.exports = mergeInto;
 
-},{"./mergeHelpers":220}],222:[function(require,module,exports){
+},{"./mergeHelpers":222}],224:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -36035,7 +35915,7 @@ var mixInto = function(constructor, methodBag) {
 
 module.exports = mixInto;
 
-},{}],223:[function(require,module,exports){
+},{}],225:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014 Facebook, Inc.
@@ -36076,7 +35956,7 @@ function monitorCodeUse(eventName, data) {
 module.exports = monitorCodeUse;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],224:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],226:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -36123,7 +36003,7 @@ function onlyChild(children) {
 module.exports = onlyChild;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactDescriptor":131,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],225:[function(require,module,exports){
+},{"./ReactDescriptor":133,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],227:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -36158,7 +36038,7 @@ if (ExecutionEnvironment.canUseDOM) {
 
 module.exports = performance || {};
 
-},{"./ExecutionEnvironment":97}],226:[function(require,module,exports){
+},{"./ExecutionEnvironment":99}],228:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -36193,7 +36073,7 @@ var performanceNow = performance.now.bind(performance);
 
 module.exports = performanceNow;
 
-},{"./performance":225}],227:[function(require,module,exports){
+},{"./performance":227}],229:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -36280,7 +36160,7 @@ if (ExecutionEnvironment.canUseDOM) {
 
 module.exports = setInnerHTML;
 
-},{"./ExecutionEnvironment":97}],228:[function(require,module,exports){
+},{"./ExecutionEnvironment":99}],230:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -36331,7 +36211,7 @@ function shallowEqual(objA, objB) {
 
 module.exports = shallowEqual;
 
-},{}],229:[function(require,module,exports){
+},{}],231:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -36377,7 +36257,7 @@ function shouldUpdateReactComponent(prevDescriptor, nextDescriptor) {
 
 module.exports = shouldUpdateReactComponent;
 
-},{}],230:[function(require,module,exports){
+},{}],232:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014 Facebook, Inc.
@@ -36456,7 +36336,7 @@ function toArray(obj) {
 module.exports = toArray;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],231:[function(require,module,exports){
+},{"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],233:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -36653,7 +36533,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 module.exports = traverseAllChildren;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./ReactInstanceHandles":139,"./ReactTextComponent":158,"./invariant":209,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],232:[function(require,module,exports){
+},{"./ReactInstanceHandles":141,"./ReactTextComponent":160,"./invariant":211,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],234:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -36828,7 +36708,7 @@ function update(value, spec) {
 module.exports = update;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./copyProperties":185,"./invariant":209,"./keyOf":216,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],233:[function(require,module,exports){
+},{"./copyProperties":187,"./invariant":211,"./keyOf":218,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],235:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014 Facebook, Inc.
@@ -36880,10 +36760,10 @@ if ("production" !== process.env.NODE_ENV) {
 module.exports = warning;
 
 }).call(this,require("/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js"))
-},{"./emptyFunction":191,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":13}],234:[function(require,module,exports){
+},{"./emptyFunction":193,"/Users/kevinwelcher/LocalDev/ten-lines/node_modules/browserify/node_modules/insert-module-globals/node_modules/process/browser.js":15}],236:[function(require,module,exports){
 module.exports = require('./lib/React');
 
-},{"./lib/React":104}],235:[function(require,module,exports){
+},{"./lib/React":106}],237:[function(require,module,exports){
 /**
  * Module dependencies.
  */
@@ -37889,7 +37769,7 @@ request.put = function(url, data, fn){
 
 module.exports = request;
 
-},{"emitter":236,"reduce":237}],236:[function(require,module,exports){
+},{"emitter":238,"reduce":239}],238:[function(require,module,exports){
 
 /**
  * Expose `Emitter`.
@@ -38047,7 +37927,7 @@ Emitter.prototype.hasListeners = function(event){
   return !! this.listeners(event).length;
 };
 
-},{}],237:[function(require,module,exports){
+},{}],239:[function(require,module,exports){
 
 /**
  * Reduce `arr` with `fn`.
@@ -38072,4 +37952,4 @@ module.exports = function(arr, fn, initial){
   
   return curr;
 };
-},{}]},{},[5])
+},{}]},{},[7])

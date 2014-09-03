@@ -37,7 +37,6 @@ var FilterFiles = React.createClass({
         var filtered = this.state.filtered || [];
 
         var files = map(function(obj) {
-
             var filter = actions.addFilter.bind(null, obj.filename);
             var name = obj.filename.split('/');
             if (name.length > 1) {
@@ -52,6 +51,9 @@ var FilterFiles = React.createClass({
                 </li>
             );
         }, filtered);
+
+        var upperLimit = max(pluck('contents', this.state.filtered));
+        var step = upperLimit / 100;
 
 
         var extensions = compose(
@@ -73,18 +75,32 @@ var FilterFiles = React.createClass({
 
         return (
             <div>
-                <h2>Filters</h2>
+                <h1>Filters</h1>
+                {self.state.active
+                    ? <strong onClick={actions.resetFilters}>reset</strong>
+                    : <span onClick={actions.resetFilters}>reset</span>}
+
+                <h2>Username</h2>
                 <input
                     type="text"
                     placeholder="username"
                     value={this.state.username}
                     onKeyPress={this.filterName} />
 
-                {self.state.active
-                    ? <strong onClick={actions.resetFilters}>reset</strong>
-                    : <span onClick={actions.resetFilters}>reset</span>}
+                <h2>File Size</h2>
+                0
+                <input
+                    type="range"
+                    min="0"
+                    max={upperLimit}
+                    step={step}
+                     />
+                {upperLimit}
 
+                <h2>Extensions</h2>
                 <ul> {extensions} </ul>
+
+                <h2>Files</h2>
                 <ul> {files} </ul>
             </div>
         );

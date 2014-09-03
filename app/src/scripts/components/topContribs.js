@@ -6,6 +6,7 @@ var Fluxxor = require('fluxxor');
 var FluxChildMixin = Fluxxor.FluxChildMixin(React);
 var StoreWatchMixin = Fluxxor.StoreWatchMixin('FlatStore');
 var cx = React.addons.classSet;
+var Percent = require('./percent');
 
 
 var UserPercent = React.createClass({
@@ -16,7 +17,7 @@ var UserPercent = React.createClass({
             <div>
                 <strong>{this.props.user.username}</strong>
                 :
-                <strong>{this.props.user.percent}</strong>
+                <Percent val={this.props.user.percent} />
             </div>
         );
     }
@@ -34,7 +35,10 @@ var FilterFiles = React.createClass({
 
         return (
             <div>
-                <h1>Top Contributor</h1>
+                <div>
+                    <h1>Top Contributor</h1>
+                    <small>% of lines owned in the project</small>
+                </div>
 
                 <div className="half">
                     <UserPercent user={head(topFive)} />
