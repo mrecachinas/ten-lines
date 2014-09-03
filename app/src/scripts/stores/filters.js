@@ -27,6 +27,7 @@ var FilterStore = Fluxxor.createStore({
     filter: function() {
         this.waitFor(['RepoStore'], function(repoStore) {
             this.filtered = repoStore.getState().raw;
+            this.maxSize = this.filtered.
 
             // Use this to see if a string matches a regexp in an array
             var reduceOrRegExp = curry(function(regs, file) {
