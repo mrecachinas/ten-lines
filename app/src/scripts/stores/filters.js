@@ -27,7 +27,6 @@ var FilterStore = Fluxxor.createStore({
     filter: function() {
         this.waitFor(['RepoStore'], function(repoStore) {
             this.filtered = repoStore.getState().raw;
-            this.maxSize = this.filtered.
 
             // Use this to see if a string matches a regexp in an array
             var reduceOrRegExp = curry(function(regs, file) {
@@ -74,13 +73,13 @@ var FilterStore = Fluxxor.createStore({
             this.filtered = filter(function(file) {
                 return file.contents.length > 0;
             }, this.filtered);
-            //this.filtered = filter(where({contents: compose(gt(0), prop('length'))}))
 
             this.emit('change')
         });
     },
 
     userFilter: function(payload) {
+        console.log(payload);
         this.username = payload.username;
         this.filter();
     },

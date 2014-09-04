@@ -59,7 +59,7 @@ module.exports = FetchRepo;
 var React = require('react/addons');
 var Fluxxor = require('fluxxor');
 var FluxChildMixin = Fluxxor.FluxChildMixin(React);
-var StoreWatchMixin = Fluxxor.StoreWatchMixin('FilterStore');
+var StoreWatchMixin = Fluxxor.StoreWatchMixin('FilterStore', 'FlatStore');
 var cx = React.addons.classSet;
 
 // A component to unify things that get red strikethrus when hovered
@@ -78,7 +78,11 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
 
     getStateFromFlux: function() {
         var flux = this.getFlux();
-        return flux.store('FilterStore').getState();
+        var largest = flux.store('FlatStore').getState().largest
+
+        return mixin(flux.store('FilterStore').getState(), {
+            largest: largest
+        });
     },
 
     filterName:  function(e) {
@@ -86,35 +90,48 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
         this.getFlux().actions.filter.userFilter(username);
     },
 
+    renderUserSearch: function() {
+        var username = this.state.username;
+
+        return (
+            React.DOM.div(null, 
+                React.DOM.h2(null, "Username"), 
+                React.DOM.input({
+                    type: "text", 
+                    placeholder: "username", 
+                    value: username || '', 
+                    onChange: this.filterName})
+            )
+        );
+    },
+
     filterSize: function(e) {
         var size = e.target.value;
         this.getFlux().actions.filter.sizeFilter(size);
     },
 
-    render: function() {
+    renderFileSize: function() {
+        console.log(this.state.largest);
+        return (
+            React.DOM.div(null, 
+                React.DOM.h2(null, "File Size"), 
+                React.DOM.input({
+                    type: "range", 
+                    min: "1", 
+                    step: "10", 
+                    value: this.state.fileSize, 
+                    max: this.state.largest, 
+                    onChange: this.filterSize}), 
+
+                this.state.fileSize
+            )
+        );
+    },
+
+    renderFileExtensions: function() {
         var self = this;
-        var actions = self.getFlux().actions.filter;
         var filtered = this.state.filtered || [];
-
-        var files = map(function(obj) {
-            var filter = actions.addFilter.bind(null, obj.filename);
-            var name = obj.filename.split('/');
-            if (name.length > 1) {
-                name = last(name);
-            }
-
-            return (
-                React.DOM.li(null, 
-                    XHover({onClick: filter, 'data-tooltip': obj.filename}, 
-                        name, ": ", obj.contents.length
-                    )
-                )
-            );
-        }, filtered);
-
-        var upperLimit = max(map(size, pluck('contents', this.state.filtered)));
-        var step = upperLimit / 100;
-
+        var actions = self.getFlux().actions.filter;
 
         var extensions = compose(
             uniq,
@@ -135,33 +152,56 @@ var FilterFiles = React.createClass({displayName: 'FilterFiles',
 
         return (
             React.DOM.div(null, 
+                React.DOM.h2(null, "Extensions"), 
+                React.DOM.ul(null, " ", extensions, " ")
+            )
+        );
+    },
+
+    renderFiles: function() {
+        var self = this;
+        var filtered = this.state.filtered || [];
+        var actions = self.getFlux().actions.filter;
+
+        var files = map(function(obj) {
+            var filter = actions.addFilter.bind(null, obj.filename);
+            var name = obj.filename.split('/');
+            if (name.length > 1) {
+                name = last(name);
+            }
+
+            return (
+                React.DOM.li(null, 
+                    XHover({onClick: filter, 'data-tooltip': obj.filename}, 
+                        name, ": ", obj.contents.length
+                    )
+                )
+            );
+        }, filtered);
+
+        return (
+            React.DOM.div(null, 
+                React.DOM.h2(null, "Files"), 
+                React.DOM.ul(null, " ", files, " ")
+            )
+        );
+    },
+
+    render: function() {
+        var self = this;
+        var actions = self.getFlux().actions.filter;
+
+        return (
+            React.DOM.div(null, 
                 React.DOM.h1(null, "Filters"), 
                 self.state.active
                     ? React.DOM.strong({onClick: actions.resetFilters}, "reset")
                     : React.DOM.span({onClick: actions.resetFilters}, "reset"), 
 
-                React.DOM.h2(null, "Username"), 
-                React.DOM.input({
-                    type: "text", 
-                    placeholder: "username", 
-                    value: this.state.username, 
-                    onKeyPress: this.filterName}), 
-
-                React.DOM.h2(null, "File Size"), 
-                React.DOM.input({
-                    type: "range", 
-                    min: "1", 
-                    value: this.state.fileSize, 
-                    max: upperLimit, 
-                    step: step, 
-                    onMouseUp: this.filterSize}), 
-                this.state.fileSize, 
-
-                React.DOM.h2(null, "Extensions"), 
-                React.DOM.ul(null, " ", extensions, " "), 
-
-                React.DOM.h2(null, "Files"), 
-                React.DOM.ul(null, " ", files, " ")
+                this.renderUserSearch(), 
+                this.renderFileSize(), 
+                this.renderFileExtensions(), 
+                this.renderFiles()
             )
         );
     }
@@ -445,13 +485,13 @@ var FilterStore = Fluxxor.createStore({
             this.filtered = filter(function(file) {
                 return file.contents.length > 0;
             }, this.filtered);
-            //this.filtered = filter(where({contents: compose(gt(0), prop('length'))}))
 
             this.emit('change')
         });
     },
 
     userFilter: function(payload) {
+        console.log(payload);
         this.username = payload.username;
         this.filter();
     },
@@ -561,11 +601,13 @@ var FlatStore = Fluxxor.createStore({
         this.average = 0;
         this.median = 0;
         this.mean = 0;
+        this.largest = 0;
     },
 
     update: function() {
-        this.waitFor(['FilterStore'], function(filterStore) {
+        this.waitFor(['RepoStore', 'FilterStore'], function(repoStore, filterStore) {
             var filtered = filterStore.getState().filtered;
+            var raw = repoStore.getState().raw;
 
             var flat = this.flat = compose(flatten, pluck('contents'))(filtered);
 
@@ -591,6 +633,7 @@ var FlatStore = Fluxxor.createStore({
             this.average = sum(pluck('count', this.byDate)) / this.byDate.length;
             this.median = compose(last, take(middle), pluck('count'), sortBy(prop('count')))(this.byDate);
 
+            this.largest = compose(max, map(size), pluck('contents'))(raw);
 
             this.emit('change');
         });
@@ -600,7 +643,7 @@ var FlatStore = Fluxxor.createStore({
     // Expose our state via this method (for read only protection)
     getState: function() {
         return compose(
-            pick(['flat', 'byUser', 'byDate', 'average', 'median'])
+            pick(['flat', 'byUser', 'byDate', 'average', 'median', 'largest'])
         )(this);
     }
 });

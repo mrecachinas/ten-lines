@@ -30,11 +30,13 @@ var FlatStore = Fluxxor.createStore({
         this.average = 0;
         this.median = 0;
         this.mean = 0;
+        this.largest = 0;
     },
 
     update: function() {
-        this.waitFor(['FilterStore'], function(filterStore) {
+        this.waitFor(['RepoStore', 'FilterStore'], function(repoStore, filterStore) {
             var filtered = filterStore.getState().filtered;
+            var raw = repoStore.getState().raw;
 
             var flat = this.flat = compose(flatten, pluck('contents'))(filtered);
 
@@ -60,6 +62,7 @@ var FlatStore = Fluxxor.createStore({
             this.average = sum(pluck('count', this.byDate)) / this.byDate.length;
             this.median = compose(last, take(middle), pluck('count'), sortBy(prop('count')))(this.byDate);
 
+            this.largest = compose(max, map(size), pluck('contents'))(raw);
 
             this.emit('change');
         });
@@ -69,7 +72,7 @@ var FlatStore = Fluxxor.createStore({
     // Expose our state via this method (for read only protection)
     getState: function() {
         return compose(
-            pick(['flat', 'byUser', 'byDate', 'average', 'median'])
+            pick(['flat', 'byUser', 'byDate', 'average', 'median', 'largest'])
         )(this);
     }
 });
